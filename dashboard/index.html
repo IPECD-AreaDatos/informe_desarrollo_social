@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitor de Impacto Social - IPECD</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        ipecd: {
+                            green: '#2E7D32',
+                            darkGreen: '#1B5E20',
+                            grey: '#455A64',
+                            lightGrey: '#F3F4F6',
+                            accent: '#66BB6A'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Roboto', 'sans-serif'],
+                        heading: ['Montserrat', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        /* Custom Animations */
+        .fade-in-up {
+            animation: fadeInUp 0.8s ease-out forwards;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        
+        .delay-100 { animation-delay: 0.1s; }
+        .delay-200 { animation-delay: 0.2s; }
+        .delay-300 { animation-delay: 0.3s; }
+        
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-gray-800 font-sans antialiased selection:bg-ipecd-green selection:text-white">
+
+    <!-- Navbar -->
+    <nav class="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-20">
+                <div class="flex items-center gap-4">
+                    <!-- Logo Placeholder -->
+                    <div class="h-12 w-12 bg-ipecd-green rounded-lg flex items-center justify-center text-white font-bold text-xl shadow-lg">
+                        <i class="fa-solid fa-chart-pie"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-heading font-bold text-xl sm:text-2xl text-ipecd-green tracking-tight">IPECD</h1>
+                        <span class="text-xs sm:text-sm text-gray-500 font-medium tracking-wide border-l-2 border-gray-300 pl-2 uppercase">Monitor de Impacto Social</span>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4">
+                    <div class="hidden sm:block text-right">
+                        <p class="text-xs text-gray-400 font-medium uppercase">Período</p>
+                        <select class="text-sm font-semibold text-ipecd-grey bg-transparent border-none focus:ring-0 cursor-pointer p-0">
+                            <option>Enero 2026</option>
+                            <option>Diciembre 2025</option>
+                        </select>
+                    </div>
+                    <div class="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center border-2 border-white shadow-md">
+                        <i class="fa-solid fa-user text-gray-500"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        
+        <!-- Welcome Section -->
+        <div class="fade-in-up">
+            <h2 class="text-2xl font-heading font-bold text-gray-800">Panel de Control</h2>
+            <p class="text-gray-500">Resumen ejecutivo de gestión social provincial.</p>
+        </div>
+
+        <!-- KPI Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <!-- Card 1 -->
+            <div class="glass-card rounded-2xl p-6 shadow-sm hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 fade-in-up delay-100 border-l-4 border-ipecd-green">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Intervenciones</p>
+                        <h3 class="text-3xl font-heading font-bold text-gray-800 mt-1">63</h3>
+                        <div class="mt-2 flex items-center text-xs text-ipecd-green font-medium">
+                            <i class="fa-solid fa-arrow-trend-up mr-1"></i>
+                            <span>+12% vs mes anterior</span>
+                        </div>
+                    </div>
+                    <div class="p-3 bg-green-50 rounded-xl text-ipecd-green">
+                        <i class="fa-solid fa-hand-holding-heart text-xl"></i>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Card 2 -->
+            <div class="glass-card rounded-2xl p-6 shadow-sm hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 fade-in-up delay-200 border-l-4 border-blue-500">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Beneficiarios Únicos</p>
+                        <h3 class="text-3xl font-heading font-bold text-gray-800 mt-1">39</h3>
+                        <div class="mt-2 flex items-center text-xs text-blue-500 font-medium">
+                            <i class="fa-solid fa-users mr-1"></i>
+                            <span>Consolidado mensual</span>
+                        </div>
+                    </div>
+                    <div class="p-3 bg-blue-50 rounded-xl text-blue-500">
+                        <i class="fa-solid fa-address-card text-xl"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 3 -->
+            <div class="glass-card rounded-2xl p-6 shadow-sm hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 fade-in-up delay-300 border-l-4 border-purple-500">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Localidades</p>
+                        <h3 class="text-3xl font-heading font-bold text-gray-800 mt-1">16</h3>
+                        <div class="mt-2 flex items-center text-xs text-purple-500 font-medium">
+                            <i class="fa-solid fa-map-location-dot mr-1"></i>
+                            <span>Cobertura provincial</span>
+                        </div>
+                    </div>
+                    <div class="p-3 bg-purple-50 rounded-xl text-purple-500">
+                        <i class="fa-solid fa-location-dot text-xl"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 4 -->
+            <div class="glass-card rounded-2xl p-6 shadow-sm hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 fade-in-up delay-300 border-l-4 border-orange-500">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Demanda Principal</p>
+                        <h3 class="text-2xl font-heading font-bold text-gray-800 mt-1">Pasajes</h3>
+                        <div class="mt-2 flex items-center text-xs text-orange-500 font-medium">
+                            <i class="fa-solid fa-fire mr-1"></i>
+                            <span>Alta prioridad</span>
+                        </div>
+                    </div>
+                    <div class="p-3 bg-orange-50 rounded-xl text-orange-500">
+                        <i class="fa-solid fa-ticket text-xl"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- Main Chart: Locations -->
+            <div class="lg:col-span-2 glass-card rounded-2xl p-6 shadow-sm fade-in-up">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="font-heading font-bold text-lg text-gray-800">Top Localidades Asistidas</h3>
+                    <button class="text-gray-400 hover:text-ipecd-green transition"><i class="fa-solid fa-ellipsis"></i></button>
+                </div>
+                <div class="chart-container">
+                    <canvas id="locationsChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Donut Chart: Demographics -->
+            <div class="glass-card rounded-2xl p-6 shadow-sm fade-in-up">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="font-heading font-bold text-lg text-gray-800">Perfil Demográfico</h3>
+                </div>
+                <div class="chart-container" style="height: 250px;">
+                    <canvas id="genderChart"></canvas>
+                </div>
+                <div class="mt-4 grid grid-cols-2 gap-2 text-center">
+                    <div class="bg-gray-50 rounded-lg p-2">
+                        <span class="block text-xl font-bold text-ipecd-green">23</span>
+                        <span class="text-xs text-gray-500">Femenino</span>
+                    </div>
+                    <div class="bg-gray-50 rounded-lg p-2">
+                        <span class="block text-xl font-bold text-gray-600">12</span>
+                        <span class="text-xs text-gray-500">Masculino</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Secondary Charts Row -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+             <!-- Age Range Chart -->
+             <div class="glass-card rounded-2xl p-6 shadow-sm fade-in-up">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="font-heading font-bold text-lg text-gray-800">Distribución Etaria</h3>
+                </div>
+                <div class="chart-container">
+                    <canvas id="ageChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Agent Performance -->
+            <div class="glass-card rounded-2xl p-6 shadow-sm fade-in-up">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="font-heading font-bold text-lg text-gray-800">Eficiencia Operativa</h3>
+                    <span class="bg-green-100 text-ipecd-green text-xs font-bold px-2 py-1 rounded-full">Top Performers</span>
+                </div>
+                <div class="space-y-4">
+                    <!-- Agent 1 -->
+                    <div class="flex items-center p-3 bg-white border border-gray-100 rounded-xl hover:shadow-md transition">
+                        <div class="h-10 w-10 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold">SG</div>
+                        <div class="ml-4 flex-1">
+                            <h4 class="text-sm font-bold text-gray-800">Silvia Karina Gomez</h4>
+                            <p class="text-xs text-gray-500">Agente de Gestión</p>
+                        </div>
+                        <div class="text-right">
+                            <span class="block text-lg font-bold text-ipecd-green">10</span>
+                            <span class="text-xs text-gray-400">Gestiones</span>
+                        </div>
+                    </div>
+                     <!-- Agent 2 Placeholder -->
+                     <div class="flex items-center p-3 bg-white border border-gray-100 rounded-xl hover:shadow-md transition opacity-75">
+                        <div class="h-10 w-10 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center font-bold">JP</div>
+                        <div class="ml-4 flex-1">
+                            <h4 class="text-sm font-bold text-gray-800">Juan Perez</h4>
+                            <p class="text-xs text-gray-500">Asistente Social</p>
+                        </div>
+                        <div class="text-right">
+                            <span class="block text-lg font-bold text-gray-600">8</span>
+                            <span class="text-xs text-gray-400">Gestiones</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Audit & Search Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 fade-in-up">
+            <!-- Recurrence Alert -->
+            <div class="glass-card rounded-2xl p-6 shadow-sm border-l-4 border-red-400 bg-red-50/30">
+                <h3 class="font-heading font-bold text-lg text-gray-800 mb-2 flex items-center">
+                    <i class="fa-solid fa-triangle-exclamation text-red-500 mr-2"></i> Auditoría: Recurrencia
+                </h3>
+                <p class="text-sm text-gray-600 mb-4">Se han detectado beneficiarios con múltiples solicitudes en el último trimestre.</p>
+                <div class="bg-white p-4 rounded-xl border border-red-100 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p class="font-bold text-gray-800">Bordon Gisela</p>
+                        <p class="text-xs text-red-500 font-medium">3 Solicitudes (Pasajes)</p>
+                    </div>
+                    <button class="text-xs bg-red-100 text-red-600 px-3 py-1 rounded-full font-bold hover:bg-red-200 transition">Ver Historial</button>
+                </div>
+            </div>
+
+            <!-- Citizen Search Demo -->
+            <div class="lg:col-span-2 glass-card rounded-2xl p-6 shadow-sm bg-ipecd-green relative overflow-hidden text-white">
+                <div class="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-white opacity-10 rounded-full blur-2xl"></div>
+                <div class="relative z-10">
+                    <h3 class="font-heading font-bold text-xl mb-2">Buscador Unificado de Ciudadanos</h3>
+                    <p class="text-green-100 text-sm mb-6 max-w-lg">Consulte el perfil integral del beneficiario, historial de ayudas y alertas socioeconómicas en tiempo real.</p>
+                    
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <div class="relative flex-1">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-3.5 text-gray-400"></i>
+                            <input type="text" placeholder="Ingrese DNI (Ej: 25.xxx.xxx)" class="w-full pl-10 pr-4 py-3 rounded-xl bg-white text-gray-800 font-medium focus:ring-2 focus:ring-green-400 border-none outline-none shadow-lg">
+                        </div>
+                        <button class="bg-ipecd-grey hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-xl shadow-lg transition transform active:scale-95 flex items-center justify-center gap-2">
+                            <span>Consultar</span>
+                            <i class="fa-solid fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Technical Note Footer -->
+        <div class="mt-10 border-t border-gray-200 pt-8 pb-4 text-center fade-in-up">
+            <div class="inline-block bg-yellow-50 border border-yellow-200 rounded-lg px-4 py-3 max-w-3xl mx-auto text-left">
+                <div class="flex items-start gap-3">
+                    <i class="fa-solid fa-lightbulb text-yellow-600 mt-1"></i>
+                    <div>
+                        <h5 class="text-sm font-bold text-yellow-800 uppercase mb-1">Nota Técnica IPECD</h5>
+                        <p class="text-xs text-yellow-700 leading-relaxed">
+                            Este tablero es una muestra estática generada para demostración. La integración plena con la <strong>API del Ministerio</strong> permitiría alertas automáticas de fraude, geolocalización de demanda insatisfecha en mapas de calor y optimización de partidas presupuestarias mediante algoritmos predictivos en tiempo real.
+                        </p>
+                    </div>
+                </div>
+            </div>
+            <p class="text-xs text-gray-400 mt-6">&copy; 2026 Instituto Provincial de Estadística y Ciencia de Datos (IPECD) - Corrientes</p>
+        </div>
+
+    </main>
+
+    <script>
+        // Chart Defaults
+        Chart.defaults.font.family = "'Roboto', sans-serif";
+        Chart.defaults.color = '#64748B';
+        
+        // --- 1. Top Locations Chart (Bar Horizontal) ---
+        const ctxLocations = document.getElementById('locationsChart').getContext('2d');
+        new Chart(ctxLocations, {
+            type: 'bar',
+            data: {
+                labels: ['Corrientes (Capital)', 'Lomas de Vallejos', 'San Luis del Palmar', 'Santa Lucía', 'San Carlos'],
+                datasets: [{
+                    label: 'Intervenciones',
+                    data: [25, 12, 10, 8, 8], // Simulated distribution based on rankings
+                    backgroundColor: [
+                        '#2E7D32', // Main green
+                        '#4CAF50',
+                        '#66BB6A',
+                        '#81C784',
+                        '#A5D6A7'
+                    ],
+                    borderRadius: 6,
+                    barThickness: 20
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    x: { grid: { display: false } },
+                    y: { grid: { display: false } }
+                }
+            }
+        });
+
+        // --- 2. Gender Distribution (Doughnut) ---
+        const ctxGender = document.getElementById('genderChart').getContext('2d');
+        new Chart(ctxGender, {
+            type: 'doughnut',
+            data: {
+                labels: ['Mujeres', 'Hombres', 'No Identificado'],
+                datasets: [{
+                    data: [23, 12, 4],
+                    backgroundColor: ['#2E7D32', '#455A64', '#E0E0E0'],
+                    borderWidth: 0,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '75%',
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { usePointStyle: true, boxWidth: 8 }
+                    }
+                }
+            }
+        });
+
+        // --- 3. Age Ranges (Bar) ---
+        const ctxAge = document.getElementById('ageChart').getContext('2d');
+        new Chart(ctxAge, {
+            type: 'bar',
+            data: {
+                labels: ['Adultos Mayores', 'Adultos', 'Jóvenes/Niños'],
+                datasets: [{
+                    label: 'Beneficiarios',
+                    data: [7, 19, 13], // <25M, 25-45M, >45M
+                    backgroundColor: '#455A64',
+                    hoverBackgroundColor: '#2E7D32',
+                    borderRadius: 8,
+                    barThickness: 30
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                         callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.y !== null) {
+                                    label += context.parsed.y;
+                                }
+                                return label;
+                            },
+                             afterLabel: function(context) {
+                                 if(context.label === 'Adultos Mayores') return '< 25M DNI';
+                                 if(context.label === 'Adultos') return '25M - 45M DNI';
+                                 if(context.label === 'Jóvenes/Niños') return '> 45M DNI';
+                             }
+                        }
+                    }
+                },
+                scales: {
+                    y: { beginAtZero: true, grid: { color: '#f3f4f6' } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
