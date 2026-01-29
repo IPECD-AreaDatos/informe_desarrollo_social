@@ -302,7 +302,7 @@
             </div>
         </div>
 
-        <!-- Charts Section -->
+        <!-- Charts Section (Grid Adjustment) -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
             <!-- Locations Chart -->
@@ -330,36 +330,106 @@
             </div>
         </div>
 
-        <!-- Strategic Footer -->
-        <div class="bg-ipecd-dark rounded-2xl p-6 sm:p-8 text-white slide-up mt-8 relative overflow-hidden">
-            <!-- Decorative Background Element -->
-            <div class="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-white opacity-5 rounded-full blur-3xl"></div>
+        <!-- NEW: Secondary Insights Row -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
 
-            <div class="relative z-10">
-                <div class="flex items-center gap-3 mb-4">
-                    <div
-                        class="h-10 w-10 bg-ipecd-lightGreen rounded-lg flex items-center justify-center shadow-lg animate-pulse">
-                        <i class="fa-solid fa-satellite-dish text-white"></i>
-                    </div>
-                    <h3 class="font-heading font-bold text-lg sm:text-xl">Potencial de Integración</h3>
+            <!-- Assistance Types Chart -->
+            <div class="dashboard-card p-6 slide-up md:col-span-1">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-heading font-bold text-lg text-ipecd-dark">Tipo de Asistencia</h3>
+                    <i class="fa-regular fa-circle-question info-tooltip"
+                        data-tippy-content="Distribución de recursos solicitados más allá de pasajes."></i>
                 </div>
-                <p class="text-sm sm:text-base text-gray-300 leading-relaxed max-w-2xl mb-6">
-                    Este entorno demuestra la capacidad visual del sistema. Con la <strong>integración total a la base
-                        de datos</strong>, se habilitarán funciones críticas:
-                </p>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                    <div class="flex items-start gap-2">
-                        <i class="fa-solid fa-shield-halved text-ipecd-lightGreen mt-1"></i>
-                        <span>Detección automática de <strong>fraude</strong> por duplicidad de beneficios.</span>
+                <div class="relative h-48 w-full flex justify-center">
+                    <canvas id="assistanceChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Agent Performance (Restored) -->
+            <div class="dashboard-card p-6 slide-up md:col-span-2">
+                <div class="flex justify-between items-center mb-4">
+                    <div class="flex items-center gap-2">
+                        <h3 class="font-heading font-bold text-lg text-ipecd-dark">Casos Asignados</h3>
                     </div>
-                    <div class="flex items-start gap-2">
-                        <i class="fa-solid fa-map-location text-ipecd-lightGreen mt-1"></i>
-                        <span><strong>Geolocalización real</strong> de vulnerabilidad sobre cartografía IPECD.</span>
+                    <span class="text-xs text-gray-400">Eficiencia Enero '26</span>
+                </div>
+
+                <div class="space-y-4">
+                    <!-- Agent 1 -->
+                    <div class="flex items-center gap-4">
+                        <div
+                            class="h-10 w-10 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center font-bold text-xs ring-2 ring-white">
+                            SG</div>
+                        <div class="flex-1">
+                            <div class="flex justify-between mb-1">
+                                <span class="text-sm font-bold text-ipecd-dark">Silvia Karina Gomez</span>
+                                <span class="text-sm font-bold text-ipecd-green">10 Casos</span>
+                            </div>
+                            <div class="w-full bg-gray-100 rounded-full h-2">
+                                <div class="bg-ipecd-green h-2 rounded-full" style="width: 100%"></div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="flex items-start gap-2">
-                        <i class="fa-solid fa-chart-line text-ipecd-lightGreen mt-1"></i>
-                        <span>Proyección de partidas presupuestarias basada en <strong>demanda
-                                predictiva</strong>.</span>
+                    <!-- Agent 2 -->
+                    <div class="flex items-center gap-4">
+                        <div
+                            class="h-10 w-10 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center font-bold text-xs ring-2 ring-white">
+                            JP</div>
+                        <div class="flex-1">
+                            <div class="flex justify-between mb-1">
+                                <span class="text-sm font-bold text-gray-700">Juan Perez</span>
+                                <span class="text-sm font-bold text-gray-500">8 Casos</span>
+                            </div>
+                            <div class="w-full bg-gray-100 rounded-full h-2">
+                                <div class="bg-ipecd-lightGreen h-2 rounded-full opacity-70" style="width: 80%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Agent 3 -->
+                    <div class="flex items-center gap-4">
+                        <div
+                            class="h-10 w-10 rounded-full bg-gray-100 text-gray-600 flex items-center justify-center font-bold text-xs ring-2 ring-white">
+                            ML</div>
+                        <div class="flex-1">
+                            <div class="flex justify-between mb-1">
+                                <span class="text-sm font-bold text-gray-700">Maria Lopez</span>
+                                <span class="text-sm font-bold text-gray-500">6 Casos</span>
+                            </div>
+                            <div class="w-full bg-gray-100 rounded-full h-2">
+                                <div class="bg-green-300 h-2 rounded-full" style="width: 60%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Practical Strategic Footer (Rewrite) -->
+        <div class="bg-white border-t-4 border-ipecd-green rounded-xl p-6 shadow-sm slide-up mt-8">
+            <div class="flex flex-col md:flex-row items-center gap-6">
+                <div class="flex-shrink-0 p-4 bg-green-50 rounded-full">
+                    <i class="fa-solid fa-server text-3xl text-ipecd-green"></i>
+                </div>
+                <div class="flex-1">
+                    <h3 class="font-heading font-bold text-lg text-ipecd-dark mb-2">Potencial de Integración: Beneficios
+                        Inmediatos</h3>
+                    <p class="text-sm text-gray-600 mb-4 leading-relaxed">
+                        Más allá de la visualización, conectar este dashboard a una base de datos centralizada
+                        permitiría resolver problemas cotidianos operativos:
+                    </p>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm font-medium text-gray-700">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-check text-green-500"></i>
+                            <span>Eliminación de fichas en papel</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-check text-green-500"></i>
+                            <span>Historial único por beneficiario</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-check text-green-500"></i>
+                            <span>Reportes automáticos al Ministerio</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -495,6 +565,32 @@
                         cornerRadius: 8
                     }
                 }
+            }
+        });
+
+        // 3. NEW: Assistance Types (Doughnut)
+        const ctxAssist = document.getElementById('assistanceChart').getContext('2d');
+        new Chart(ctxAssist, {
+            type: 'doughnut',
+            data: {
+                labels: ['Pasajes', 'Módulos', 'Medicación', 'Varios'],
+                datasets: [{
+                    data: [50, 30, 15, 5],
+                    backgroundColor: ['#116935', '#27993c', '#76b884', '#e5e7eb'],
+                    borderWidth: 0,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: { usePointStyle: true, boxWidth: 6, font: { size: 10 } }
+                    }
+                },
+                layout: { padding: 0 }
             }
         });
     </script>
