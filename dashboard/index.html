@@ -241,66 +241,6 @@
             </div>
         </div>
 
-        <!-- Interactive Search Demo -->
-        <div
-            class="dashboard-card p-6 slide-up bg-gradient-to-r from-ipecd-green to-ipecd-lightGreen text-white md:col-span-3 shadow-lg">
-            <div class="flex flex-col md:flex-row items-center justify-between gap-6">
-                <div class="w-full md:w-1/2">
-                    <div class="flex items-center gap-2 mb-2">
-                        <i class="fa-solid fa-id-card text-green-200"></i>
-                        <h3 class="font-heading font-bold text-lg">Buscador de Ciudadano</h3>
-                    </div>
-                    <p class="text-sm text-green-50 mb-4">Consulte historial unificado. <span
-                            class="opacity-75 italic">(Pruebe con DNI: 27567413)</span></p>
-
-                    <div class="relative">
-                        <input type="text" id="dniSearchInput" placeholder="Ingrese DNI..."
-                            class="w-full pl-4 pr-12 py-3 rounded-xl text-gray-800 font-bold focus:outline-none focus:ring-4 focus:ring-green-400/50 shadow-inner"
-                            onkeypress="handleKeyPress(event)">
-                        <button onclick="searchDNI()"
-                            class="absolute right-2 top-2 bottom-2 bg-ipecd-dark hover:bg-gray-800 text-white px-4 rounded-lg transition-colors font-medium text-sm">
-                            Buscar
-                        </button>
-                    </div>
-                    <p id="searchError" class="text-xs text-red-200 mt-2 hidden font-bold"><i
-                            class="fa-solid fa-circle-exclamation mr-1"></i> DNI no encontrado en la base de Enero 2026.
-                    </p>
-                </div>
-
-                <!-- Result Card (Hidden by default) -->
-                <div id="searchResult"
-                    class="hidden w-full md:w-1/2 bg-white rounded-xl p-4 text-gray-800 shadow-2xl transform transition-all duration-500 translate-x-4">
-                    <div class="flex items-start gap-3 border-b border-gray-100 pb-3 mb-3">
-                        <div
-                            class="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 font-bold text-xs">
-                            <i class="fa-solid fa-user"></i>
-                        </div>
-                        <div>
-                            <h4 class="font-bold text-ipecd-dark">Gomez, Maria Estela</h4>
-                            <p class="text-xs text-gray-500">DNI: 27.567.413</p>
-                        </div>
-                        <span
-                            class="ml-auto bg-green-100 text-ipecd-green text-xs font-bold px-2 py-1 rounded">Activo</span>
-                    </div>
-                    <div class="grid grid-cols-2 gap-2 text-sm">
-                        <div>
-                            <p class="text-xs text-gray-400">Localidad</p>
-                            <p class="font-semibold text-ipecd-grey">San Luis del Palmar</p>
-                        </div>
-                        <div>
-                            <p class="text-xs text-gray-400">Historial Ene '26</p>
-                            <p class="font-semibold text-ipecd-grey">2 Intervenciones</p>
-                        </div>
-                    </div>
-                    <div class="mt-3 pt-2 border-t border-gray-100">
-                        <p class="text-xs text-gray-400 mb-1">Última Asistencia:</p>
-                        <p class="text-xs font-medium text-ipecd-dark bg-gray-50 p-2 rounded border border-gray-100">
-                            <i class="fa-solid fa-ticket text-orange-500 mr-1"></i> Solicitud Pasajes (Aprobado)
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </div>
 
         <!-- Charts Section (Grid Adjustment) -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -450,35 +390,6 @@
             placement: 'bottom-end',
         });
 
-        // --- Demo Search Logic ---
-        function handleKeyPress(event) {
-            if (event.key === 'Enter') {
-                searchDNI();
-            }
-        }
-
-        function searchDNI() {
-            const input = document.getElementById('dniSearchInput').value;
-            const resultCard = document.getElementById('searchResult');
-            const errorMsg = document.getElementById('searchError');
-
-            // Clean previous state
-            resultCard.classList.add('hidden');
-            errorMsg.classList.add('hidden');
-
-            // Logic Simulation
-            if (input.trim() === '27567413') {
-                // Show Success
-                resultCard.classList.remove('hidden');
-                resultCard.classList.add('fade-in');
-            } else if (input.trim() === '') {
-                // Do nothing empty
-            } else {
-                // Show Error
-                errorMsg.classList.remove('hidden');
-                errorMsg.classList.add('fade-in');
-            }
-        }
 
         // --- Chart.js Configuration ---
         Chart.defaults.font.family = "'Roboto', sans-serif";
