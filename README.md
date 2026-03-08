@@ -1,33 +1,42 @@
-# Monitor de Impacto Social - IPECD
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-Este proyecto es un Dashboard Interactivo diseñado para visualizar la gestión social del IPECD.
+## Getting Started
 
-## Estructura del Proyecto
+First, run the development server:
 
+```bash
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
 ```
-informe_desarrollo_social/
-├── dashboard/
-│   └── index.html      # El Dashboard completo (Single File Application)
-├── files/              # Fuente de datos original (Excel)
-└── README.md
-```
 
-## Instrucciones
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-1.  Abrir `dashboard/index.html` en cualquier navegador moderno (Chrome, Edge, Firefox).
-2.  No requiere instalación ni servidor web (funciona localmente).
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-## Características Implementadas
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-*   **Diseño Responsivo (Mobile-First)**: Adaptado para celulares y escritorios.
-*   **Estética IPECD**: Uso de paleta de colores institucional (Verde #2E7D32, Gris #455A64).
-*   **Gráficos Interactivos**: Chart.js integrado para visualización de localidades, género y edades.
-*   **Datos Enero 2026**: Pre-cargados según el reporte ejecutivo.
-*   **Auditoría y Búsqueda**: Módulos simulados para demostración de valor (Nota Técnica incluida).
+## Learn More
 
-## Próximos Pasos (Hoja de Ruta)
+To learn more about Next.js, take a look at the following resources:
 
-Para llevar este prototipo a producción:
-1.  **Backend**: Crear una API (Python/Node.js) que lea los archivos de `files/` dinámicamente.
-2.  **Base de Datos**: Migrar los Excel a una base de datos SQL para búsquedas en tiempo real.
-3.  **Autenticación**: Agregar login para agentes del IPECD.
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+
+## Deploy on Vercel
+
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+
+## Documentation
+
+- [Fuentes de Datos (Data Sources)](./README_DATASOURCES.md) - Detalle de dónde proviene la información para cada indicador del tablero.
+- [Soporte Técnico](./README.md) - Guía básica de inicio.
+
+---
+© 2026 IPECD - Corrientes
