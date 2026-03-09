@@ -4,13 +4,27 @@ import { createSSHTunnel, SSHConfig, TunnelConfig } from './ssh-tunnel';
 export const getDBConnection = async () => {
     let rawPrivateKey = process.env.SSH_PRIVATE_KEY;
     if (rawPrivateKey) {
-        // Remover comillas dobles o simples si las tiene en los extremos
-        if (rawPrivateKey.startsWith('"') && rawPrivateKey.endsWith('"')) {
-            rawPrivateKey = rawPrivateKey.slice(1, -1);
-        } else if (rawPrivateKey.startsWith("'") && rawPrivateKey.endsWith("'")) {
-            rawPrivateKey = rawPrivateKey.slice(1, -1);
-        }
+        // Remover comillas si las hay
+        rawPrivateKey = rawPrivateKey.replace(/^["']|["']$/g, '');
+        // Reemplazar literal \n por salto real por si acaso
         rawPrivateKey = rawPrivateKey.replace(/\\n/g, '\n');
+
+        // Si por alguna razón Vercel lo leyó en una sola línea y cambió los saltos por espacios (común al pegar)
+        const beginRsa = '-----BEGIN RSA PRIVATE KEY-----';
+        const endRsa = '-----END RSA PRIVATE KEY-----';
+
+        if (rawPrivateKey.includes(beginRsa) && rawPrivateKey.includes(endRsa)) {
+            // Extraemos solo el cuerpo en base64 (quitando los headers/footers y todos los espacios/saltos)
+            const body = rawPrivateKey
+                .substring(rawPrivateKey.indexOf(beginRsa) + beginRsa.length, rawPrivateKey.indexOf(endRsa))
+                .replace(/\s+/g, '');
+
+            // Si el cuerpo base64 existe, lo reformateamos con saltos cada 64 caracteres
+            if (body.length > 0) {
+                const chunks = body.match(/.{1,64}/g) || [];
+                rawPrivateKey = `${beginRsa}\n${chunks.join('\n')}\n${endRsa}\n`;
+            }
+        }
     }
 
     const sshConfig: SSHConfig = {
