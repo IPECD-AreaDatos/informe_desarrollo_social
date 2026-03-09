@@ -5,6 +5,12 @@ import {
     Users,
     AlertTriangle,
     Briefcase,
+    Droplets,
+    Zap,
+    Waves,
+    Wifi,
+    Building,
+    Coins,
 } from "lucide-react";
 import { DICCIONARIO } from "@/lib/constants";
 import { Header } from "@/components/Header";
@@ -39,6 +45,33 @@ export default function VulnerabilityPage() {
         <div className="p-8 max-w-[1600px] mx-auto space-y-8 bg-[#F8FAFC]">
             <Header hideDatePicker />
 
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                {[
+                    { title: "Agua Corriente", value: data?.infrastructure?.con_agua || 0, icon: <Droplets size={24} className="text-blue-500" />, bg: "bg-blue-50" },
+                    { title: "Servicios Eléctricos", value: data?.infrastructure?.con_luz || 0, icon: <Zap size={24} className="text-yellow-500" />, bg: "bg-yellow-50" },
+                    { title: "Red Cloacal", value: data?.infrastructure?.con_cloaca || 0, icon: <Waves size={24} className="text-teal-500" />, bg: "bg-teal-50" },
+                    { title: "Conexión a Internet", value: data?.infrastructure?.con_internet || 0, icon: <Wifi size={24} className="text-purple-500" />, bg: "bg-purple-50" },
+                ].map((kpi, idx) => (
+                    <div key={idx} className={`p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between items-start gap-4 ${kpi.bg}`}>
+                        <div className="p-3 bg-white rounded-2xl shadow-sm">
+                            {kpi.icon}
+                        </div>
+                        <div>
+                            <p className="text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1">{kpi.title}</p>
+                            <div className="flex items-end gap-2">
+                                <p className="text-3xl font-black text-slate-800">{kpi.value.toLocaleString('es-AR')}</p>
+                                <span className="text-sm font-bold text-slate-400 mb-1">
+                                    / {data?.infrastructure?.total || 0}
+                                </span>
+                            </div>
+                            <div className="mt-2 text-xs font-bold text-slate-500">
+                                {data?.infrastructure?.total ? Math.round((kpi.value / data.infrastructure.total) * 100) : 0}% Cobertura
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+
             {/* HACINAMIENTO REAL */}
             <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden">
                 <div className="flex justify-between items-start mb-8 border-b pb-4">
@@ -67,7 +100,6 @@ export default function VulnerabilityPage() {
                     </div>
                 </div>
             </div>
-
 
             <div className="grid grid-cols-1 gap-8">
                 {/* BLOQUE DEMOGRÁFICO REAL */}
@@ -117,6 +149,29 @@ export default function VulnerabilityPage() {
                                 ))}
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                {/* INVERSIÓN REAL POR PROGRAMA */}
+                <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-8">
+                    <div className="flex justify-between items-center border-b pb-4">
+                        <h3 className="text-xl font-black text-slate-800 flex items-center gap-2">
+                            <Coins className="text-yellow-500" />
+                            Inversión Real por Programa
+                        </h3>
+                        <span className="text-[10px] font-black bg-slate-100 text-slate-500 px-3 py-1 rounded-full uppercase">Top Programas</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {data?.programs?.map((p: any, i: number) => (
+                            <div key={i} className="p-5 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow">
+                                <p className="text-xs font-black text-slate-500 uppercase tracking-wider mb-4 h-10">{p.descripcion}</p>
+                                <div>
+                                    <p className="text-3xl font-black text-slate-800">${Number(p.total_monto).toLocaleString('es-AR')}</p>
+                                    <p className="text-xs font-bold text-slate-400 mt-1">{p.total_beneficiarios} Titulares</p>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </div>
 

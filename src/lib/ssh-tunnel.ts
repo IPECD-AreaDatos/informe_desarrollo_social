@@ -5,7 +5,8 @@ export interface SSHConfig {
     host: string;
     port: number;
     username: string;
-    privateKeyPath: string;
+    privateKey?: string;
+    privateKeyPath?: string;
 }
 
 export interface TunnelConfig {
@@ -56,7 +57,7 @@ export const createSSHTunnel = (
                 host: sshConfig.host,
                 port: sshConfig.port,
                 username: sshConfig.username,
-                privateKey: require('fs').readFileSync(sshConfig.privateKeyPath),
+                privateKey: sshConfig.privateKey || (sshConfig.privateKeyPath ? require('fs').readFileSync(sshConfig.privateKeyPath) : undefined),
                 readyTimeout: 30000, // 30 segundos de timeout para el handshake
             });
     });

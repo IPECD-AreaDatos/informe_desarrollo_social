@@ -17,7 +17,8 @@ import {
   PieChart,
   BarChart3,
   TrendingUp,
-  Search
+  Search,
+  HeartPulse
 } from "lucide-react";
 import Link from "next/link";
 import { clsx } from "clsx";
@@ -359,6 +360,7 @@ export default function SummaryDashboard() {
             { label: "Educación", detail: "Nivel de Instrucción", icon: Building2, href: "/educacion", color: "bg-blue-500" },
             { label: "Vulnerabilidad", detail: "Servicios Básicos", icon: Activity, href: "/vulnerabilidad", color: "bg-orange-500" },
             { label: "Territorial", detail: "Mapa de Impacto", icon: MapPin, href: "/territorial", color: "bg-purple-500" },
+            { label: "Salud", detail: "Reporte Sanitario", icon: HeartPulse, href: "/salud", color: "bg-red-500" },
           ].map((idea, i) => (
             <Link
               key={i}

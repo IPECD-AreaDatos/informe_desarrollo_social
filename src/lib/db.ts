@@ -6,6 +6,7 @@ export const getDBConnection = async () => {
         host: process.env.SSH_HOST || '',
         port: parseInt(process.env.SSH_PORT || '22'),
         username: process.env.SSH_USER || '',
+        privateKey: process.env.SSH_PRIVATE_KEY ? process.env.SSH_PRIVATE_KEY.replace(/\\n/g, '\n') : undefined,
         privateKeyPath: process.env.SSH_KEY_PATH || '',
     };
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { LayoutDashboard, Users, FileText, LogIn, Database, BookOpen } from "lucide-react";
+import { LayoutDashboard, Users, FileText, LogIn, Database, BookOpen, HeartPulse } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -10,6 +10,7 @@ const menuItems = [
     { name: "Resumen Central", icon: LayoutDashboard, href: "/" },
     { name: "Perfil Vulnerabilidad", icon: Users, href: "/vulnerabilidad" },
     { name: "Análisis Educativo", icon: BookOpen, href: "/educacion" },
+    { name: "Reporte de Salud", icon: HeartPulse, href: "/salud" },
     { name: "Gestión Territorial", icon: FileText, href: "/territorial" },
     { name: "Conexión DB", icon: Database, href: "/db-status" },
 ];
