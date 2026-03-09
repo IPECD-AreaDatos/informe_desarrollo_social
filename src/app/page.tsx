@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import {
   Users,
   Coins,
@@ -28,7 +28,7 @@ import { CategoryCard } from "@/components/CategoryCard";
 import { useSearchParams } from "next/navigation";
 import { DemographicStackedChart } from "@/components/DemographicStackedChart";
 
-export default function SummaryDashboard() {
+function SummaryDashboardContent() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -381,5 +381,13 @@ export default function SummaryDashboard() {
       </div>
     </div>
   );
+  // ADDED SUSPENSE COMPONENT
 }
 
+export default function SummaryDashboard() {
+  return (
+    <Suspense fallback={<div className="p-8 max-w-[1600px] mx-auto space-y-10 bg-[#F8FAFC]">Cargando Dashboard...</div>}>
+      <SummaryDashboardContent />
+    </Suspense>
+  );
+}

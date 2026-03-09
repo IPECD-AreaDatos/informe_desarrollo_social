@@ -1,7 +1,7 @@
 "use client";
 
 import { Calendar, ChevronDown, Check } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { clsx } from "clsx";
 
@@ -34,7 +34,7 @@ const getDynamicPeriods = () => {
 
 const periods = getDynamicPeriods();
 
-export function Header({ hideDatePicker = false }: { hideDatePicker?: boolean }) {
+function HeaderContent({ hideDatePicker = false }: { hideDatePicker?: boolean }) {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
@@ -164,6 +164,14 @@ export function Header({ hideDatePicker = false }: { hideDatePicker?: boolean })
                 </div>
             )}
         </header>
+    );
+}
+
+export function Header(props: { hideDatePicker?: boolean }) {
+    return (
+        <Suspense fallback={<div className="h-20 animate-pulse bg-slate-100 rounded-2xl mb-10"></div>}>
+            <HeaderContent {...props} />
+        </Suspense>
     );
 }
 

@@ -1,4 +1,4 @@
-import { getDBConnection } from './src/lib/db';
+import { getDBConnection } from '../src/lib/db';
 import * as dotenv from 'dotenv';
 import * as fs from 'fs';
 dotenv.config();

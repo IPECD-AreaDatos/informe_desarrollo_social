@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import {
     Truck,
     Box,
@@ -16,7 +16,7 @@ import { useSearchParams } from "next/navigation";
 import { Header } from "@/components/Header";
 import { KPICard } from "@/components/KPICard";
 
-export default function TerritorialPage() {
+function TerritorialPageContent() {
     const [data, setData] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const searchParams = useSearchParams();
@@ -195,5 +195,13 @@ export default function TerritorialPage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function TerritorialPage() {
+    return (
+        <Suspense fallback={<div className="p-8 max-w-[1600px] mx-auto space-y-8 bg-[#FDFDFD]">Cargando...</div>}>
+            <TerritorialPageContent />
+        </Suspense>
     );
 }
