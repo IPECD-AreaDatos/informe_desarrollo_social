@@ -2,11 +2,22 @@ import mysql from 'mysql2/promise';
 import { createSSHTunnel, SSHConfig, TunnelConfig } from './ssh-tunnel';
 
 export const getDBConnection = async () => {
+    let rawPrivateKey = process.env.SSH_PRIVATE_KEY;
+    if (rawPrivateKey) {
+        // Remover comillas dobles o simples si las tiene en los extremos
+        if (rawPrivateKey.startsWith('"') && rawPrivateKey.endsWith('"')) {
+            rawPrivateKey = rawPrivateKey.slice(1, -1);
+        } else if (rawPrivateKey.startsWith("'") && rawPrivateKey.endsWith("'")) {
+            rawPrivateKey = rawPrivateKey.slice(1, -1);
+        }
+        rawPrivateKey = rawPrivateKey.replace(/\\n/g, '\n');
+    }
+
     const sshConfig: SSHConfig = {
         host: process.env.SSH_HOST || '',
         port: parseInt(process.env.SSH_PORT || '22'),
         username: process.env.SSH_USER || '',
-        privateKey: process.env.SSH_PRIVATE_KEY ? process.env.SSH_PRIVATE_KEY.replace(/\\n/g, '\n') : undefined,
+        privateKey: rawPrivateKey,
         privateKeyPath: process.env.SSH_KEY_PATH || '',
     };
 
