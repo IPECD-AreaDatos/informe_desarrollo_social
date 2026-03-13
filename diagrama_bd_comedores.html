@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Diagrama BD – Comedores Corrientes</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #1c2128;
+    --border: #30363d;
+    --accent: #58a6ff;
+    --accent2: #f78166;
+    --accent3: #3fb950;
+    --accent4: #d29922;
+    --accent5: #a371f7;
+    --accent6: #39c5cf;
+    --text: #e6edf3;
+    --text-muted: #7d8590;
+    --text-dim: #484f58;
+    --pk: #f78166;
+    --fk: #58a6ff;
+    --field: #e6edf3;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: auto;
+  }
+
+  /* HEADER */
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 20px 32px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-badge {
+    background: var(--accent);
+    color: #000;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 2px;
+    letter-spacing: 1px;
+  }
+  .header h1 {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-muted);
+    letter-spacing: 0.3px;
+  }
+  .header h1 span { color: var(--text); font-weight: 600; }
+  .header-right {
+    margin-left: auto;
+    display: flex;
+    gap: 20px;
+    align-items: center;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .legend-dot { width: 8px; height: 8px; border-radius: 2px; }
+
+  /* CANVAS */
+  .canvas {
+    padding: 40px;
+    position: relative;
+    min-height: calc(100vh - 70px);
+  }
+
+  /* SECTION LABELS */
+  .section-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 4px 10px;
+    border-radius: 2px;
+    display: inline-block;
+    margin-bottom: 16px;
+  }
+
+  /* TABLE */
+  .table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    width: 280px;
+    transition: box-shadow 0.2s;
+  }
+  .table-wrap:hover {
+    box-shadow: 0 0 0 1px var(--accent), 0 8px 24px rgba(0,0,0,0.4);
+  }
+
+  .table-header {
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .table-icon {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    flex-shrink: 0;
+  }
+  .table-name {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+  }
+  .table-tag {
+    margin-left: auto;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    padding: 2px 6px;
+    border-radius: 2px;
+    background: rgba(255,255,255,0.06);
+    color: var(--text-muted);
+  }
+
+  .table-fields { padding: 6px 0; }
+  .field-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 14px;
+    font-size: 11px;
+    transition: background 0.15s;
+  }
+  .field-row:hover { background: rgba(255,255,255,0.03); }
+  .field-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 8px;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 2px;
+    flex-shrink: 0;
+    letter-spacing: 0.5px;
+  }
+  .pk { background: rgba(247,129,102,0.15); color: var(--pk); }
+  .fk { background: rgba(88,166,255,0.15); color: var(--fk); }
+  .idx { background: rgba(63,185,80,0.15); color: var(--accent3); }
+
+  .field-name {
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--field);
+    flex: 1;
+    font-size: 11px;
+  }
+  .field-type {
+    font-family: 'IBM Plex Mono', monospace;
+    color: var(--text-dim);
+    font-size: 9px;
+  }
+  .field-note {
+    font-size: 9px;
+    color: var(--text-dim);
+    font-style: italic;
+  }
+  .field-sep {
+    height: 1px;
+    background: var(--border);
+    margin: 4px 0;
+    opacity: 0.5;
+  }
+
+  /* GRID LAYOUT */
+  .diagram {
+    display: grid;
+    gap: 32px;
+  }
+
+  /* ROW SECTIONS */
+  .row {
+    display: flex;
+    gap: 28px;
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  /* RELATIONSHIP ARROWS - SVG overlay */
+  .rel-canvas {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* SECTION GROUP */
+  .group {
+    position: relative;
+    background: rgba(255,255,255,0.015);
+    border: 1px solid rgba(255,255,255,0.04);
+    border-radius: 10px;
+    padding: 20px;
+    z-index: 1;
+  }
+
+  /* RELATIONSHIP LEGEND PANEL */
+  .rel-panel {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px 20px;
+    width: 100%;
+  }
+  .rel-panel h3 {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 14px;
+  }
+  .rel-list { display: flex; flex-direction: column; gap: 8px; }
+  .rel-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 11px;
+    color: var(--text-muted);
+  }
+  .rel-from { color: var(--accent); font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 600; }
+  .rel-arrow { color: var(--text-dim); }
+  .rel-to { color: var(--accent5); font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 600; }
+  .rel-cardinality {
+    margin-left: auto;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 9px;
+    padding: 2px 8px;
+    border-radius: 2px;
+    background: rgba(255,255,255,0.05);
+    color: var(--text-muted);
+  }
+
+  /* NOTES BOX */
+  .notes-box {
+    background: rgba(88,166,255,0.05);
+    border: 1px solid rgba(88,166,255,0.2);
+    border-radius: 6px;
+    padding: 14px 16px;
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.7;
+  }
+  .notes-box strong { color: var(--accent); font-size: 10px; font-family: 'IBM Plex Mono', monospace; letter-spacing: 1px; }
+  .notes-box ul { padding-left: 16px; margin-top: 8px; }
+  .notes-box li { margin-bottom: 4px; }
+
+  /* COLOR THEMES PER TABLE */
+  .t-comedor .table-header { background: rgba(88,166,255,0.08); border-bottom-color: rgba(88,166,255,0.2); }
+  .t-comedor .table-name { color: var(--accent); }
+  .t-comedor .table-icon { background: rgba(88,166,255,0.15); }
+
+  .t-beneficio .table-header { background: rgba(63,185,80,0.08); border-bottom-color: rgba(63,185,80,0.2); }
+  .t-beneficio .table-name { color: var(--accent3); }
+  .t-beneficio .table-icon { background: rgba(63,185,80,0.15); }
+
+  .t-resource .table-header { background: rgba(209,153,34,0.08); border-bottom-color: rgba(209,153,34,0.2); }
+  .t-resource .table-name { color: var(--accent4); }
+  .t-resource .table-icon { background: rgba(209,153,34,0.15); }
+
+  .t-becario .table-header { background: rgba(163,113,247,0.08); border-bottom-color: rgba(163,113,247,0.2); }
+  .t-becario .table-name { color: var(--accent5); }
+  .t-becario .table-icon { background: rgba(163,113,247,0.15); }
+
+  .t-control .table-header { background: rgba(247,129,102,0.08); border-bottom-color: rgba(247,129,102,0.2); }
+  .t-control .table-name { color: var(--accent2); }
+  .t-control .table-icon { background: rgba(247,129,102,0.15); }
+
+  .t-aux .table-header { background: rgba(57,197,207,0.08); border-bottom-color: rgba(57,197,207,0.2); }
+  .t-aux .table-name { color: var(--accent6); }
+  .t-aux .table-icon { background: rgba(57,197,207,0.15); }
+
+  @media (max-width: 900px) {
+    .canvas { padding: 20px; }
+    .row { flex-direction: column; }
+    .table-wrap { width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-badge">DB SCHEMA</div>
+  <h1><span>Seg. Alimentaria</span> — Ministerio de Desarrollo Social · Pcia. de Corrientes</h1>
+  <div class="header-right">
+    <div class="legend-item"><div class="legend-dot" style="background:var(--pk)"></div>PK</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--fk)"></div>FK</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--accent3)"></div>IDX</div>
+    <div class="legend-item" style="margin-left:8px; font-size:11px; color:var(--text-muted)">v1.0 · 2026</div>
+  </div>
+</div>
+
+<div class="canvas">
+<div class="diagram">
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- ROW 1: NÚCLEO CENTRAL                              -->
+  <!-- ═══════════════════════════════════════════════════ -->
+  <div>
+    <div class="section-label" style="background:rgba(88,166,255,0.1);color:var(--accent)">① Núcleo — Comedores</div>
+    <div class="row">
+
+      <!-- COMEDOR -->
+      <div class="table-wrap t-comedor" id="t-comedor">
+        <div class="table-header">
+          <div class="table-icon">🍽</div>
+          <span class="table-name">COMEDOR</span>
+          <span class="table-tag">CORE</span>
+        </div>
+        <div class="table-fields">
+          <div class="field-row"><span class="field-badge pk">PK</span><span class="field-name">comedor_id</span><span class="field-type">INT</span></div>
+          <div class="field-row"><span class="field-badge idx">IDX</span><span class="field-name">numero_oficial</span><span class="field-type">VARCHAR(10)</span></div>
+          <div class="field-sep"></div>
+          <div class="field-row"><span class="field-name">nombre</span><span class="field-type">VARCHAR(120)</span></div>
+          <div class="field-row"><span class="field-name">domicilio</span><span class="field-type">VARCHAR(200)</span></div>
+          <div class="field-row"><span class="field-name">coordenadas_lat</span><span class="field-type">DECIMAL(9,6)</span></div>
+          <div class="field-row"><span class="field-name">coordenadas_lng</span><span class="field-type">DECIMAL(9,6)</span></div>
+          <div class="field-row"><span class="field-name">link_google_maps</span><span class="field-type">TEXT</span></div>
+          <div class="field-sep"></div>
+          <div class="field-row"><span class="field-badge fk">FK</span><span class="field-name">zona_id</span><span class="field-type">INT</span></div>
+          <div class="field-row"><span class="field-badge fk">FK</span><span class="field-name">tipo_id</span><span class="field-type">INT</span></div>
+          <div class="field-row"><span class="field-badge fk">FK</span><span class="field-name">subtipo_id</span><span class="field-type">INT</span></div>
+          <div class="field-row"><span class="field-badge fk">FK</span><span class="field-name">organismo_id</span><span class="field-type">INT</span></div>
+          <div class="field-sep"></div>
+          <div class="field-row"><span class="field-name">responsable_nombre</span><span class="field-type">VARCHAR(120)</span></div>
+          <div class="field-row"><span class="field-name">responsable_dni</span><span class="field-type">VARCHAR(15)</span></div>
+          <div class="field-row"><span class="field-name">telefono</span><span class="field-type">VARCHAR(30)</span></div>
+          <div class="field-sep"></div>
+          <div class="field-row"><span class="field-name">activo</span><span class="field-type">BOOLEAN</span></div>
+          <div class="field-row"><span class="field-name">fecha_alta</span><span class="field-type">DATE</span></div>
+          <div class="field-row"><span class="field-name">observaciones</span><span class="field-type">TEXT</span></div>
+        </div>
+      </div>
+
+      <!-- ZONA / REGION -->
+      <div class="table-wrap t-aux" id="t-zona">
+        <div class="table-header">
+          <div class="table-icon">📍</div>
+          <span class="table-name">ZONA</span>
+          <span class="table-tag">AUX</span>
+        </div>
+        <div class="table-fields">
+          <div class="field-row"><span class="field-badge pk">PK</span><span class="field-name">zona_id</span><span class="field-type">INT</span></div>
+          <div class="field-sep"></div>
+          <div class="field-row"><span class="field-name">codigo</span><span class="field-type">CHAR(1)</span><span class="field-note">C/A/…</span></div>
+          <div class="field-row"><span class="field-name">nombre</span><span class="field-type">VARCHAR(60)</span></div>
+          <div class="field-row"><span class="field-name">ambito</span><span class="field-type">ENUM</span><span class="field-note">CAPITAL/INTERIOR</span></div>
+          <div class="field-sep"></div>
+          <div class="field-row"><span class="field-name">departamento</span><span class="field-type">VARCHAR(80)</span></div>
+          <div class="field-row"><span class="field-name">localidad</span><span class="field-type">VARCHAR(80)</span></div>
+          <div class="field-row"><span class="field-name">centro_distribucion</span><span class="field-type">VARCHAR(150)</span></div>
+        </div>
+      </div>
+
+      <!-- TIPO COMEDOR -->
+      <div class="table-wrap t-aux" id="t-tipo">
+        <div class="table-header">
+          <div class="table-icon">🏷</div>
+          <span class="table-name">TIPO_COMEDOR</span>
+          <span class="table-tag">AUX</span>
+        </div>
+        <div class="table-fields">
+          <div class="field-row"><span class="field-badge pk">PK</span><span class="field-name">tipo_id</span><span class="field-type">INT</span></div>
+          <div class="field-sep"></div>
+          <div class="field-row"><span class="field-name">nombre</span><span class="field-type">VARCHAR(60)</span><span class="field-note">OFICIAL/SOLIDARIO/…</span></div>
+          <div class="field-sep"></div>
+          <div class="field-row"><span class="field-badge fk">FK</span><span class="field-name">subtipo_id</span><span class="field-type">INT</span></div>
+        </div>
+      </div>
+
+      <!-- SUBTIPO COMEDOR -->
+      <div class="table-wrap t-aux" id="t-subtipo">
+        <div class="table-header">
+          <div class="table-icon">🔖</div>
+          <span class="table-name">SUBTIPO_COMEDOR</span>
+          <span class="table-tag">AUX</span>
+        </div>
+        <div class="table-fields">
+          <div class="field-row"><span class="field-badge pk">PK</span><span class="field-name">subtipo_id</span><span class="field-type">INT</span></div>
+          <div class="field-sep"></div>
+          <div class="field-row"><span class="field-name">nombre</span><span class="field-type">VARCHAR(80)</span><span class="field-note">PRIV./IGLESIA/ONG/…</span></div>
+          <div class="field-row"><span class="field-badge fk">FK</span><span class="field-name">tipo_id</span><span class="field-type">INT</span></div>
+        </div>
+      </div>
+
+      <!-- ORGANISMO -->
+      <div class="table-wrap t-aux" id="t-org">
+        <div class="table-header">
+          <div class="table-icon">🏛</div>
+          <span class="table-name">ORGANISMO</span>
+          <span class="table-tag">AUX</span>
+        </div>
+        <div class="table-fields">
+          <div class="field-row"><span class="field-badge pk">PK</span><span class="field-name">organismo_id</span><span class="field-type">INT</span></div>
+          <div class="field-sep"></div>
+          <div class="field-row"><span class="field-name">nombre</span><span class="field-type">VARCHAR(100)</span><span class="field-note">MIN Y FLIA / ACCION SOC</span></div>
+          <div class="field-row"><span class="field-name">tipo</span><span class="field-type">VARCHAR(60)</span></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- ROW 2: RACIONES Y BENEFICIOS                        -->
+  <!-- ═══════════════════════════════════════════════════ -->
+  <div>
+    <div class="section-label" style="background:rgba(63,185,80,0.1);color:var(--accent3)">② Raciones y Beneficios</div>
+    <div class="row">
+
+      <!-- RACIONES INTERIOR -->
+      <div class="table-wrap t-beneficio" id="t-racion">
+        <div class="table-header">
+          <div class="table-icon">🥣</div>
+          <span class="table-name">RACION</span>
+          <span class="table-tag">INTERIOR+CAP</span>
+        </div>
+        <div class="table-fields">
+          <div class="field-row"><span class="field-badge pk">PK</span><span class="field-name">racion_id</span><span class="field-type">INT</span></div>
+          <div class="field-row"><span class="field-badge fk">FK</span><span class="field-name">comedor_id</span><span class="field-type">INT</span></div>
+          <div class="field-sep"></div>
+          <div class="field-row"><span class="field-name">tipo_servicio</span><span class="field-type">ENUM</span><span class="field-note">COMIDA/REFRIG/AMBOS</span></div>
+          <div class="field-row"><span class="field-name">cantidad_beneficiarios</span><span class="field-type">INT</span></div>
+          <div class="field-row"><span class="field-name">periodo_inicio</span><span class="field-type">DATE</span></div>
+          <div class="field-row"><span class="field-name">periodo_fin</span><span class="field-type">DATE</span></div>
+          <div class="field-row"><span class="field-name">plan_ref</span><span class="field-type">VARCHAR(30)</span><span class="field-note">Plan Verano 2026</span></div>
+          <div class="field-row"><span class="field-name">observaciones</span><span class="field-type">TEXT</span></div>
+        </div>
+      </div>
+
+      <!-- GAS -->
+      <div class="table-wrap t-resource" id="t-gas">
+        <div class="table-header">
+          <div class="table-icon">🔥</div>
+          <span class="table-name">BENEFICIO_GAS</span>
+          <span class="table-tag">C/45 DÍAS</span>
+        </div>
+        <div class="table-fields">
+          <div class="field-row"><span class="field-badge pk">PK</span><span class="field-name">gas_id</span><span class="field-type">INT</span></div>
+          <div class="field-row"><span class="field-badge fk">FK</span><span class="field-name">comedor_id</span><span class="field-type">INT</span></div>
+          <div class="field-sep"></div>
+          <div class="field-row"><span class="field-name">garrafas_10kg</span><span class="field-type">INT</span></div>
+          <div class="field-row"><span class="field-name">garrafas_15kg</span><span class="field-type">INT</span></div>
+          <div class="field-row"><span class="field-name">garrafas_45kg</span><span class="field-type">INT</span></div>
+          <div class="field-sep"></div>
+          <div class="field-row"><span class="field-name">fecha_entrega</span><span class="field-type">DATE</span></div>
+          <div class="field-row"><span class="field-name">proveedor</span><span class="field-type">VARCHAR(80)</span></div>
+          <div class="field-row"><span class="field-name">nro_vale</span><span class="field-type">VARCHAR(30)</span></div>
+        </div>
+      </div>
+
+      <!-- LIMPIEZA -->
+      <div class="table-wrap t-resource" id="t-limp">
+        <div class="table-header">
+          <div class="table-icon">🧹</div>
+          <span class="table-name">BENEFICIO_LIMPIEZA</span>
+          <span class="table-tag">C/60 DÍAS</span>
+        </div>
+        <div class="table-fields">
+          <div class="field-row"><span class="field-badge pk">PK</span><span class="field-name">limp_id</span><span class="field-type">INT</span></div>
+          <div class="field-row"><span class="field-badge fk">FK</span><span class="field-name">comedor_id</span><span class="field-type">INT</span></div>
+          <div class="field-sep"></div>
+          <div class="field-row"><span class="field-name">lavandina_4lt</span><span class="field-type">INT</span></div>
+          <div class="field-row"><span class="field-name">detergente_45lt</span><span class="field-type">INT</span></div>
+          <div class="field-row"><span class="field-name">desengrasante_5lt</span><span class="field-type">INT</span></div>
+          <div class="field-row"><span class="field-name">trapo_piso</span><span class="field-type">INT</span></div>
+          <div class="field-row"><span class="field-name">trapo_rejilla</span><span class="field-type">INT</span></div>
+          <div class="field-row"><span class="field-name">virulana</span><span class="field-type">INT</span></div>
+          <div class="field-row"><span class="field-name">esponja</span><span class="field-type">INT</span></div>
+          <div class="field-row"><span class="field-name">escobillon</span><span class="field-type">INT</span></div>
+          <div class="field-row"><span class="field-name">escurridor</span><span class="field-type">INT</span></div>
+          <div class="field-sep"></div>
+          <div class="field-row"><span class="field-name">fecha_entrega</span><span class="field-type">DATE</span></div>
+        </div>
+      </div>
+
+      <!-- FUMIGACION -->
+      <div class="table-wrap t-resource" id="t-fum">
+        <div class="table-header">
+          <div class="table-icon">🛡</div>
+          <span class="table-name">BENEFICIO_FUMIGACION</span>
+          <span class="table-tag">C/60 DÍAS</span>
+        </div>
+        <div class="table-fields">
+          <div class="field-row"><span class="field-badge pk">PK</span><span class="field-name">fumig_id</span><span class="field-type">INT</span></div>
+          <div class="field-row"><span class="field-badge fk">FK</span><span class="field-name">comedor_id</span><span class="field-type">INT</span></div>
+          <div class="field-sep"></div>
+          <div class="field-row"><span class="field-name">fecha_realizacion</span><span class="field-type">DATE</span></div>
+          <div class="field-row"><span class="field-name">proveedor</span><span class="field-type">VARCHAR(80)</span></div>
+          <div class="field-row"><span class="field-name">resultado</span><span class="field-type">TEXT</span></div>
+        </div>
+      </div>
+
+      <!-- FRUTAS Y VERDURAS -->
+      <div class="table-wrap t-resource" id="t-fv">
+        <div class="table-header">
+          <div class="table-icon">🥦</div>
+          <span class="table-name">BENEFICIO_FRESCOS</span>
+          <span class="table-tag">SEMANAL</span>
+        </div>
+        <div class="table-fields">
+          <div class="field-row"><span class="field-badge pk">PK</span><span class="field-name">frescos_id</span><span class="field-type">INT</span></div>
+          <div class="field-row"><span class="field-badge fk">FK</span><span class="field-name">comedor_id</span><span class="field-type">INT</span></div>
+          <div class="field-sep"></div>
+          <div class="field-row"><span class="field-name">cebolla_kg</span><span class="field-type">DECIMAL(6,2)</span></div>
+          <div class="field-row"><span class="field-name">zanahoria_kg</span><span class="field-type">DECIMAL(6,2)</span></div>
+          <div class="field-row"><span class="field-name">zapallo_kg</span><span class="field-type">DECIMAL(6,2)</span></div>
+          <div class="field-row"><span class="field-name">papa_kg</span><span class="field-type">DECIMAL(6,2)</span></div>
+          <div class="field-row"><span class="field-name">acelga_kg</span><span class="field-type">DECIMAL(6,2)</span></div>
+          <div class="field-row"><span class="field-name">frutas_unidades</span><span class="field-type">INT</span></div>
+          <div class="field-sep"></div>
+          <div class="field-row"><span class="field-name">carne_vacuna_kg</span><span class="field-type">DECIMAL(6,2)</span></div>
+          <div class="field-row"><span class="field-name">pollo_kg</span><span class="field-type">DECIMAL(6,2)</span></div>
+          <div class="field-row"><span class="field-name">cerdo_kg</span><span class="field-type">DECIMAL(6,2)</span></div>
+          <div class="field-sep"></div>
+          <div class="field-row"><span class="field-name">semana_inicio</span><span class="field-type">DATE</span></div>
+          <div class="field-row"><span class="field-name">proveedor</span><span class="field-type">VARCHAR(80)</span></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- ROW 3: BECARIOS Y PROGRAMAS ESPECIALES             -->
+  <!-- ═══════════════════════════════════════════════════ -->
+  <div>
+    <div class="section-label" style="background:rgba(163,113,247,0.1);color:var(--accent5)">③ Becarios y Programas</div>
+    <div class="row">
+
+      <!-- BECARIO -->
+      <div class="table-wrap t-becario" id="t-becario">
+        <div class="table-header">
+          <div class="table-icon">👤</div>
+          <span class="table-name">BECARIO</span>
+          <span class="table-tag">637 registros</span>
+        </div>
+        <div class="table-fields">
+          <div class="field-row"><span class="field-badge pk">PK</span><span class="field-name">becario_id</span><span class="field-type">INT</span></div>
+          <div class="field-row"><span class="field-badge fk">FK</span><span class="field-name">comedor_id</span><span class="field-type">INT</span></div>
+          <div class="field-sep"></div>
+          <div class="field-row"><span class="field-name">apellido</span><span class="field-type">VARCHAR(80)</span></div>
+          <div class="field-row"><span class="field-name">nombre</span><span class="field-type">VARCHAR(80)</span></div>
+          <div class="field-row"><span class="field-name">dni</span><span class="field-type">VARCHAR(15)</span></div>
+          <div class="field-sep"></div>
+          <div class="field-row"><span class="field-name">area</span><span class="field-type">VARCHAR(60)</span><span class="field-note">Personal Cocina/Coord.</span></div>
+          <div class="field-row"><span class="field-name">funcion</span><span class="field-type">VARCHAR(60)</span><span class="field-note">Encargado/Cocinero/…</span></div>
+          <div class="field-row"><span class="field-name">categoria</span><span class="field-type">CHAR(1)</span><span class="field-note">A/B/C/D/E/F</span></div>
+          <div class="field-row"><span class="field-name">monto_beca</span><span class="field-type">DECIMAL(10,2)</span></div>
+          <div class="field-sep"></div>
+          <div class="field-row"><span class="field-name">ioscor_activo</span><span class="field-type">BOOLEAN</span></div>
+          <div class="field-row"><span class="field-name">ambito</span><span class="field-type">VARCHAR(40)</span><span class="field-note">CAPITAL/SAN LUIS/…</span></div>
+          <div class="field-row"><span class="field-name">fecha_alta</span><span class="field-type">DATE</span></div>
+          <div class="field-row"><span class="field-name">activo</span><span class="field-type">BOOLEAN</span></div>
+        </div>
+      </div>
+
+      <!-- PROGRAMA MANOS PORA -->
+      <div class="table-wrap t-becario" id="t-manos">
+        <div class="table-header">
+          <div class="table-icon">🧵</div>
+          <span class="table-name">PROG_MANOS_PORA</span>
+          <span class="table-tag">2.300 benef.</span>
+        </div>
+        <div class="table-fields">
+          <div class="field-row"><span class="field-badge pk">PK</span><span class="field-name">mp_id</span><span class="field-type">INT</span></div>
+          <div class="field-sep"></div>
+          <div class="field-row"><span class="field-name">localidad</span><span class="field-type">VARCHAR(80)</span><span class="field-note">CAPITAL / MERCEDES</span></div>
+          <div class="field-row"><span class="field-name">cantidad_bases</span><span class="field-type">INT</span></div>
+          <div class="field-row"><span class="field-name">cantidad_beneficiarias</span><span class="field-type">INT</span></div>
+          <div class="field-row"><span class="field-name">monto_beca</span><span class="field-type">DECIMAL(10,2)</span></div>
+          <div class="field-row"><span class="field-name">año</span><span class="field-type">INT</span></div>
+        </div>
+      </div>
+
+      <!-- PROGRAMA CELIACOS -->
+      <div class="table-wrap t-becario" id="t-cel">
+        <div class="table-header">
+          <div class="table-icon">🌾</div>
+          <span class="table-name">PROG_CELIACOS</span>
+          <span class="table-tag">1.832 benef.</span>
+        </div>
+        <div class="table-fields">
+          <div class="field-row"><span class="field-badge pk">PK</span><span class="field-name">cel_id</span><span class="field-type">INT</span></div>
+          <div class="field-sep"></div>
+          <div class="field-row"><span class="field-name">localidad</span><span class="field-type">VARCHAR(80)</span></div>
+          <div class="field-row"><span class="field-name">cantidad_beneficiarios</span><span class="field-type">INT</span></div>
+          <div class="field-row"><span class="field-name">modulos_entregados</span><span class="field-type">INT</span></div>
+          <div class="field-row"><span class="field-name">año_mes</span><span class="field-type">DATE</span></div>
+          <div class="field-row"><span class="field-name">observaciones</span><span class="field-type">TEXT</span></div>
+        </div>
+      </div>
+
+      <!-- PROVEEDOR -->
+      <div class="table-wrap t-aux" id="t-prov">
+        <div class="table-header">
+          <div class="table-icon">🚚</div>
+          <span class="table-name">PROVEEDOR</span>
+          <span class="table-tag">AUX</span>
+        </div>
+        <div class="table-fields">
+          <div class="field-row"><span class="field-badge pk">PK</span><span class="field-name">prov_id</span><span class="field-type">INT</span></div>
+          <div class="field-sep"></div>
+          <div class="field-row"><span class="field-name">nombre</span><span class="field-type">VARCHAR(100)</span><span class="field-note">Teknofood / INCA / …</span></div>
+          <div class="field-row"><span class="field-name">rubro</span><span class="field-type">VARCHAR(60)</span><span class="field-note">ALIMENTOS/GAS/FUMI…</span></div>
+          <div class="field-row"><span class="field-name">contacto</span><span class="field-type">VARCHAR(100)</span></div>
+          <div class="field-row"><span class="field-name">activo</span><span class="field-type">BOOLEAN</span></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- ROW 4: CONTROL Y AUDITORÍA                         -->
+  <!-- ═══════════════════════════════════════════════════ -->
+  <div>
+    <div class="section-label" style="background:rgba(247,129,102,0.1);color:var(--accent2)">④ Control y Auditoría (Tablero Ministro)</div>
+    <div class="row">
+
+      <!-- REMITO / ENTREGA -->
+      <div class="table-wrap t-control" id="t-remito">
+        <div class="table-header">
+          <div class="table-icon">📋</div>
+          <span class="table-name">REMITO_ENTREGA</span>
+          <span class="table-tag">CONTROL</span>
+        </div>
+        <div class="table-fields">
+          <div class="field-row"><span class="field-badge pk">PK</span><span class="field-name">remito_id</span><span class="field-type">INT</span></div>
+          <div class="field-row"><span class="field-badge fk">FK</span><span class="field-name">comedor_id</span><span class="field-type">INT</span></div>
+          <div class="field-row"><span class="field-badge fk">FK</span><span class="field-name">prov_id</span><span class="field-type">INT</span></div>
+          <div class="field-sep"></div>
+          <div class="field-row"><span class="field-name">tipo_beneficio</span><span class="field-type">ENUM</span><span class="field-note">GAS/LIMP/FUMI/FRES/RAC</span></div>
+          <div class="field-row"><span class="field-name">fecha_entrega</span><span class="field-type">DATE</span></div>
+          <div class="field-row"><span class="field-name">firmado</span><span class="field-type">BOOLEAN</span></div>
+          <div class="field-row"><span class="field-name">conforme</span><span class="field-type">BOOLEAN</span></div>
+          <div class="field-row"><span class="field-name">nro_remito</span><span class="field-type">VARCHAR(30)</span></div>
+          <div class="field-sep"></div>
+          <div class="field-row"><span class="field-name">cantidad_declarada</span><span class="field-type">DECIMAL(10,2)</span></div>
+          <div class="field-row"><span class="field-name">cantidad_entregada</span><span class="field-type">DECIMAL(10,2)</span></div>
+          <div class="field-row"><span class="field-name">desvio</span><span class="field-type">DECIMAL(10,2)</span><span class="field-note">calculado</span></div>
+          <div class="field-sep"></div>
+          <div class="field-row"><span class="field-name">observaciones</span><span class="field-type">TEXT</span></div>
+          <div class="field-row"><span class="field-name">rendicion_presentada</span><span class="field-type">BOOLEAN</span></div>
+        </div>
+      </div>
+
+      <!-- BENEFICIARIO DECLARADO -->
+      <div class="table-wrap t-control" id="t-benef">
+        <div class="table-header">
+          <div class="table-icon">👥</div>
+          <span class="table-name">BENEFICIARIO_DECLARADO</span>
+          <span class="table-tag">CONTROL</span>
+        </div>
+        <div class="table-fields">
+          <div class="field-row"><span class="field-badge pk">PK</span><span class="field-name">benef_id</span><span class="field-type">INT</span></div>
+          <div class="field-row"><span class="field-badge fk">FK</span><span class="field-name">comedor_id</span><span class="field-type">INT</span></div>
+          <div class="field-sep"></div>
+          <div class="field-row"><span class="field-name">apellido</span><span class="field-type">VARCHAR(80)</span></div>
+          <div class="field-row"><span class="field-name">nombre</span><span class="field-type">VARCHAR(80)</span></div>
+          <div class="field-row"><span class="field-name">dni</span><span class="field-type">VARCHAR(15)</span></div>
+          <div class="field-row"><span class="field-name">fecha_nacimiento</span><span class="field-type">DATE</span></div>
+          <div class="field-sep"></div>
+          <div class="field-row"><span class="field-name">periodo_alta</span><span class="field-type">DATE</span></div>
+          <div class="field-row"><span class="field-name">periodo_baja</span><span class="field-type">DATE</span></div>
+          <div class="field-row"><span class="field-name">verificado</span><span class="field-type">BOOLEAN</span></div>
+          <div class="field-row"><span class="field-name">fuente</span><span class="field-type">ENUM</span><span class="field-note">PLANILLA/DIGITAL/VISITA</span></div>
+        </div>
+      </div>
+
+      <!-- VISITA INSPECCIÓN -->
+      <div class="table-wrap t-control" id="t-visita">
+        <div class="table-header">
+          <div class="table-icon">🔍</div>
+          <span class="table-name">VISITA_INSPECCION</span>
+          <span class="table-tag">CONTROL</span>
+        </div>
+        <div class="table-fields">
+          <div class="field-row"><span class="field-badge pk">PK</span><span class="field-name">visita_id</span><span class="field-type">INT</span></div>
+          <div class="field-row"><span class="field-badge fk">FK</span><span class="field-name">comedor_id</span><span class="field-type">INT</span></div>
+          <div class="field-sep"></div>
+          <div class="field-row"><span class="field-name">fecha</span><span class="field-type">DATE</span></div>
+          <div class="field-row"><span class="field-name">inspector</span><span class="field-type">VARCHAR(100)</span></div>
+          <div class="field-row"><span class="field-name">asistentes_contados</span><span class="field-type">INT</span></div>
+          <div class="field-sep"></div>
+          <div class="field-row"><span class="field-name">estado_instalacion</span><span class="field-type">ENUM</span><span class="field-note">BUENO/REGULAR/MALO</span></div>
+          <div class="field-row"><span class="field-name">raciones_verificadas</span><span class="field-type">BOOLEAN</span></div>
+          <div class="field-row"><span class="field-name">alerta_bromatologica</span><span class="field-type">BOOLEAN</span></div>
+          <div class="field-sep"></div>
+          <div class="field-row"><span class="field-name">novedades</span><span class="field-type">TEXT</span></div>
+          <div class="field-row"><span class="field-name">foto_evidencia</span><span class="field-type">VARCHAR(255)</span></div>
+        </div>
+      </div>
+
+      <!-- ALERTA / NOVEDAD -->
+      <div class="table-wrap t-control" id="t-alerta">
+        <div class="table-header">
+          <div class="table-icon">⚠️</div>
+          <span class="table-name">ALERTA_NOVEDAD</span>
+          <span class="table-tag">TABLERO</span>
+        </div>
+        <div class="table-fields">
+          <div class="field-row"><span class="field-badge pk">PK</span><span class="field-name">alerta_id</span><span class="field-type">INT</span></div>
+          <div class="field-row"><span class="field-badge fk">FK</span><span class="field-name">comedor_id</span><span class="field-type">INT</span></div>
+          <div class="field-sep"></div>
+          <div class="field-row"><span class="field-name">tipo</span><span class="field-type">ENUM</span><span class="field-note">BROMATOL/DESVIO/RECLAMO</span></div>
+          <div class="field-row"><span class="field-name">nivel</span><span class="field-type">ENUM</span><span class="field-note">BAJO/MEDIO/ALTO/CRÍTICO</span></div>
+          <div class="field-row"><span class="field-name">descripcion</span><span class="field-type">TEXT</span></div>
+          <div class="field-row"><span class="field-name">fecha_generacion</span><span class="field-type">DATETIME</span></div>
+          <div class="field-row"><span class="field-name">resuelta</span><span class="field-type">BOOLEAN</span></div>
+          <div class="field-row"><span class="field-name">fecha_resolucion</span><span class="field-type">DATE</span></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════ -->
+  <!-- RELACIONES                                          -->
+  <!-- ═══════════════════════════════════════════════════ -->
+  <div>
+    <div class="section-label" style="background:rgba(57,197,207,0.1);color:var(--accent6)">⑤ Mapa de Relaciones</div>
+    <div class="row">
+      <div class="rel-panel" style="max-width:860px">
+        <h3>CLAVES FORÁNEAS · DIAGRAMA ENTIDAD–RELACIÓN</h3>
+        <div class="rel-list">
+
+          <div class="rel-item"><span class="rel-from">COMEDOR</span><span class="rel-arrow">──▶</span><span class="rel-to">ZONA</span><span style="flex:1;font-size:10px;color:var(--text-dim);padding-left:8px">comedor.zona_id → zona.zona_id</span><span class="rel-cardinality">N : 1</span></div>
+          <div class="rel-item"><span class="rel-from">COMEDOR</span><span class="rel-arrow">──▶</span><span class="rel-to">TIPO_COMEDOR</span><span style="flex:1;font-size:10px;color:var(--text-dim);padding-left:8px">comedor.tipo_id → tipo_comedor.tipo_id</span><span class="rel-cardinality">N : 1</span></div>
+          <div class="rel-item"><span class="rel-from">COMEDOR</span><span class="rel-arrow">──▶</span><span class="rel-to">ORGANISMO</span><span style="flex:1;font-size:10px;color:var(--text-dim);padding-left:8px">comedor.organismo_id → organismo.organismo_id</span><span class="rel-cardinality">N : 1</span></div>
+          <div class="field-sep" style="margin:4px 0"></div>
+          <div class="rel-item"><span class="rel-from">RACION</span><span class="rel-arrow">──▶</span><span class="rel-to">COMEDOR</span><span style="flex:1;font-size:10px;color:var(--text-dim);padding-left:8px">racion.comedor_id → comedor.comedor_id</span><span class="rel-cardinality">N : 1</span></div>
+          <div class="rel-item"><span class="rel-from">BENEFICIO_GAS</span><span class="rel-arrow">──▶</span><span class="rel-to">COMEDOR</span><span style="flex:1;font-size:10px;color:var(--text-dim);padding-left:8px">beneficio_gas.comedor_id → comedor.comedor_id</span><span class="rel-cardinality">N : 1</span></div>
+          <div class="rel-item"><span class="rel-from">BENEFICIO_LIMPIEZA</span><span class="rel-arrow">──▶</span><span class="rel-to">COMEDOR</span><span style="flex:1;font-size:10px;color:var(--text-dim);padding-left:8px">beneficio_limpieza.comedor_id → comedor.comedor_id</span><span class="rel-cardinality">N : 1</span></div>
+          <div class="rel-item"><span class="rel-from">BENEFICIO_FUMIGACION</span><span class="rel-arrow">──▶</span><span class="rel-to">COMEDOR</span><span style="flex:1;font-size:10px;color:var(--text-dim);padding-left:8px">beneficio_fumigacion.comedor_id → comedor.comedor_id</span><span class="rel-cardinality">N : 1</span></div>
+          <div class="rel-item"><span class="rel-from">BENEFICIO_FRESCOS</span><span class="rel-arrow">──▶</span><span class="rel-to">COMEDOR</span><span style="flex:1;font-size:10px;color:var(--text-dim);padding-left:8px">beneficio_frescos.comedor_id → comedor.comedor_id</span><span class="rel-cardinality">N : 1</span></div>
+          <div class="field-sep" style="margin:4px 0"></div>
+          <div class="rel-item"><span class="rel-from">BECARIO</span><span class="rel-arrow">──▶</span><span class="rel-to">COMEDOR</span><span style="flex:1;font-size:10px;color:var(--text-dim);padding-left:8px">becario.comedor_id → comedor.comedor_id</span><span class="rel-cardinality">N : 1</span></div>
+          <div class="rel-item"><span class="rel-from">BENEFICIARIO_DECLARADO</span><span class="rel-arrow">──▶</span><span class="rel-to">COMEDOR</span><span style="flex:1;font-size:10px;color:var(--text-dim);padding-left:8px">beneficiario_declarado.comedor_id → comedor.comedor_id</span><span class="rel-cardinality">N : 1</span></div>
+          <div class="field-sep" style="margin:4px 0"></div>
+          <div class="rel-item"><span class="rel-from">REMITO_ENTREGA</span><span class="rel-arrow">──▶</span><span class="rel-to">COMEDOR</span><span style="flex:1;font-size:10px;color:var(--text-dim);padding-left:8px">remito.comedor_id → comedor.comedor_id</span><span class="rel-cardinality">N : 1</span></div>
+          <div class="rel-item"><span class="rel-from">REMITO_ENTREGA</span><span class="rel-arrow">──▶</span><span class="rel-to">PROVEEDOR</span><span style="flex:1;font-size:10px;color:var(--text-dim);padding-left:8px">remito.prov_id → proveedor.prov_id</span><span class="rel-cardinality">N : 1</span></div>
+          <div class="rel-item"><span class="rel-from">VISITA_INSPECCION</span><span class="rel-arrow">──▶</span><span class="rel-to">COMEDOR</span><span style="flex:1;font-size:10px;color:var(--text-dim);padding-left:8px">visita.comedor_id → comedor.comedor_id</span><span class="rel-cardinality">N : 1</span></div>
+          <div class="rel-item"><span class="rel-from">ALERTA_NOVEDAD</span><span class="rel-arrow">──▶</span><span class="rel-to">COMEDOR</span><span style="flex:1;font-size:10px;color:var(--text-dim);padding-left:8px">alerta.comedor_id → comedor.comedor_id</span><span class="rel-cardinality">N : 1</span></div>
+
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:12px;flex:1;min-width:280px">
+        <div class="notes-box">
+          <strong>📊 DATOS DE ORIGEN (XLSX)</strong>
+          <ul>
+            <li>Padrón Interior → <code>COMEDOR + ZONA + RACION</code></li>
+            <li>Padrón Capital → <code>COMEDOR + TIPO + coordenadas</code></li>
+            <li>Becarios → <code>BECARIO</code></li>
+            <li>Art. de Limpieza → <code>BENEFICIO_LIMPIEZA</code></li>
+            <li>Productos Frescos → <code>BENEFICIO_FRESCOS</code></li>
+            <li>Fumigación → <code>BENEFICIO_FUMIGACION</code></li>
+            <li>Gas → <code>BENEFICIO_GAS</code></li>
+            <li>Carne → campo en <code>BENEFICIO_FRESCOS</code></li>
+            <li>Manos Porá / Celíacos → <code>PROG_MANOS_PORA / PROG_CELIACOS</code></li>
+          </ul>
+        </div>
+        <div class="notes-box" style="border-color:rgba(247,129,102,0.3);background:rgba(247,129,102,0.04)">
+          <strong style="color:var(--accent2)">⚠️ TABLAS NUEVAS (A CONSTRUIR)</strong>
+          <ul>
+            <li><code>REMITO_ENTREGA</code> → digitalizar rendiciones existentes en papel</li>
+            <li><code>BENEFICIARIO_DECLARADO</code> → digitalizar planillas trimestrales</li>
+            <li><code>VISITA_INSPECCION</code> → registrar salidas a terreno</li>
+            <li><code>ALERTA_NOVEDAD</code> → generada por reglas del tablero</li>
+          </ul>
+        </div>
+        <div class="notes-box" style="border-color:rgba(63,185,80,0.3);background:rgba(63,185,80,0.04)">
+          <strong style="color:var(--accent3)">✅ REGLAS PARA TABLERO</strong>
+          <ul>
+            <li>Beneficiarios reales vs. declarados por comedor</li>
+            <li>Raciones entregadas vs. beneficiarios activos</li>
+            <li>Últimas visitas y estado por comedor</li>
+            <li>Alertas de vencimiento de ciclo (gas/fumig./limp.)</li>
+            <li>Mapeo georreferenciado Capital + Interior</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div><!-- /diagram -->
+</div><!-- /canvas -->
+
+</body>
+</html>

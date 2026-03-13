@@ -1,0 +1,8 @@
+# Imagen para ejecutar el ETL de comedores (Node + código + mysql2 + xlsx)
+FROM node:20-alpine
+WORKDIR /app
+COPY package.json package-lock.json* ./
+RUN npm install
+COPY . .
+ENTRYPOINT ["node", "scripts/comedores/02_etl_comedores.js"]
+CMD []

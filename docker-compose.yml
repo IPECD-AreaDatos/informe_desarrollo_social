@@ -1,0 +1,62 @@
+services:
+  app:
+    build: .
+    ports:
+      - "3005:3000"
+    env_file:
+      - .env
+    environment:
+      USE_SSH_TUNNEL: ${USE_SSH_TUNNEL:-false}
+      DB_HOST: ${DB_HOST:-db}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_USER: ${DB_USER:-app}
+      DB_PASSWORD: ${DB_PASSWORD:-app}
+      DB_NAME: ${DB_NAME:-informe}
+      SSH_HOST: ${SSH_HOST:-}
+      SSH_PORT: ${SSH_PORT:-22}
+      SSH_USER: ${SSH_USER:-}
+      SSH_PRIVATE_KEY: ${SSH_PRIVATE_KEY:-}
+      SSH_KEY_PATH: ${SSH_KEY_PATH:-}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  etl:
+    build:
+      context: .
+      dockerfile: Dockerfile.etl
+    env_file:
+      - .env
+    environment:
+      DB_HOST: ${DB_HOST:-db}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_USER: ${DB_USER:-app}
+      DB_PASSWORD: ${DB_PASSWORD:-app}
+      DB_NAME: ${DB_NAME:-informe}
+      DB_NAME_COMEDORES: ${DB_NAME_COMEDORES:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    profiles:
+      - etl
+
+  db:
+    image: mariadb:11.2
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DB_PASSWORD:-app}
+      MARIADB_DATABASE: ${DB_NAME:-informe}
+      MARIADB_USER: ${DB_USER:-app}
+      MARIADB_PASSWORD: ${DB_PASSWORD:-app}
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    # Reducir uso en disco (opcional)
+    command: --innodb_buffer_pool_size=64M --innodb_log_file_size=24M
+
+volumes:
+  db_data:
