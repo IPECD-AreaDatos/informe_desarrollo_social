@@ -11,9 +11,62 @@ import {
     Wifi,
     Building,
     Coins,
+    BookOpen,
+    HeartPulse,
+    ArrowRight,
+    TrendingDown,
+    Activity,
+    Smartphone,
+    HelpCircle
 } from "lucide-react";
+import Link from "next/link";
 import { DICCIONARIO } from "@/lib/constants";
 import { Header } from "@/components/Header";
+import { clsx } from "clsx";
+
+// Custom Donut Chart Component
+const DonutChart = ({ percent, label, value, color = "#8b5cf6" }: { percent: number, label: string, value: string | number, color?: string }) => {
+    const radius = 36;
+    const circumference = 2 * Math.PI * radius;
+    const offset = circumference - (percent / 100) * circumference;
+
+    return (
+        <div className="flex flex-col items-center justify-center p-4 bg-white rounded-3xl border border-slate-100 shadow-sm">
+            <div className="relative w-32 h-32 flex items-center justify-center">
+                <svg className="w-full h-full transform -rotate-90">
+                    <circle
+                        cx="64"
+                        cy="64"
+                        r={radius}
+                        stroke="currentColor"
+                        strokeWidth="8"
+                        fill="transparent"
+                        className="text-slate-50"
+                    />
+                    <circle
+                        cx="64"
+                        cy="64"
+                        r={radius}
+                        stroke={color}
+                        strokeWidth="8"
+                        strokeDasharray={circumference}
+                        strokeDashoffset={offset}
+                        strokeLinecap="round"
+                        fill="transparent"
+                        className="transition-all duration-1000 ease-out"
+                    />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-2xl font-black text-slate-800">{percent}%</span>
+                </div>
+            </div>
+            <div className="text-center mt-2">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{label}</p>
+                <p className="text-sm font-bold text-slate-700">{value}</p>
+            </div>
+        </div>
+    );
+};
 
 export default function VulnerabilityPage() {
     const [data, setData] = useState<any>(null);
@@ -36,147 +89,312 @@ export default function VulnerabilityPage() {
         fetchData();
     }, []);
 
-    // Helpers to map DB codes to labels using global dictionary
     const getSexoLabel = (code: number) => (DICCIONARIO.SEXO as any)[code.toString()] || `Cód. ${code}`;
     const getSituacionLabel = (code: number) => (DICCIONARIO.SITUACION as any)[code.toString()] || `Cód. ${code}`;
 
+    if (loading) {
+        return <div className="p-8 max-w-[1600px] mx-auto space-y-8 bg-[#F8FAFC]">Cargando información estratégica...</div>;
+    }
+
+    const nbiSanitarioPercent = data?.infrastructure?.total ? Math.round(((data.infrastructure.total - data.infrastructure.con_cloaca) / data.infrastructure.total) * 100) : 0;
+    const nbiEscolarPercent = data?.infrastructure?.total ? Math.round((data.asistenciaEscolar / data.infrastructure.total) * 100) : 0;
+    const nbiSubsistenciaPercent = data?.infrastructure?.total ? Math.round((data.subsistencia / data.infrastructure.total) * 100) : 0;
 
     return (
-        <div className="p-8 max-w-[1600px] mx-auto space-y-8 bg-[#F8FAFC]">
+        <div className="p-8 max-w-[1600px] mx-auto space-y-10 bg-[#F8FAFC]">
             <Header hideDatePicker />
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-                {[
-                    { title: "Agua Corriente", value: data?.infrastructure?.con_agua || 0, icon: <Droplets size={24} className="text-blue-500" />, bg: "bg-blue-50" },
-                    { title: "Servicios Eléctricos", value: data?.infrastructure?.con_luz || 0, icon: <Zap size={24} className="text-yellow-500" />, bg: "bg-yellow-50" },
-                    { title: "Red Cloacal", value: data?.infrastructure?.con_cloaca || 0, icon: <Waves size={24} className="text-teal-500" />, bg: "bg-teal-50" },
-                    { title: "Conexión a Internet", value: data?.infrastructure?.con_internet || 0, icon: <Wifi size={24} className="text-purple-500" />, bg: "bg-purple-50" },
-                ].map((kpi, idx) => (
-                    <div key={idx} className={`p-6 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between items-start gap-4 ${kpi.bg}`}>
-                        <div className="p-3 bg-white rounded-2xl shadow-sm">
-                            {kpi.icon}
-                        </div>
-                        <div>
-                            <p className="text-[11px] font-black text-slate-500 uppercase tracking-wider mb-1">{kpi.title}</p>
-                            <div className="flex items-end gap-2">
-                                <p className="text-3xl font-black text-slate-800">{kpi.value.toLocaleString('es-AR')}</p>
-                                <span className="text-sm font-bold text-slate-400 mb-1">
-                                    / {data?.infrastructure?.total || 0}
-                                </span>
-                            </div>
-                            <div className="mt-2 text-xs font-bold text-slate-500">
-                                {data?.infrastructure?.total ? Math.round((kpi.value / data.infrastructure.total) * 100) : 0}% Cobertura
-                            </div>
-                        </div>
-                    </div>
-                ))}
-            </div>
-
-            {/* HACINAMIENTO REAL */}
-            <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden">
-                <div className="flex justify-between items-start mb-8 border-b pb-4">
-                    <h3 className="text-xl font-black text-slate-800 flex items-center gap-2">
-                        <AlertTriangle className="text-red-500" />
-                        Hacinamiento Crítico Real
-                    </h3>
-                    <div className="text-center">
-                        <p className="text-2xl font-black text-red-600">{data?.crowding?.critico || 0}</p>
-                        <p className="text-[10px] font-black text-slate-400 uppercase">Hogares NBI</p>
-                    </div>
+            {/* SECCIÓN 1: KPI CRÍTICOS (Impacto Inmediato) */}
+            <div className="space-y-4">
+                <div className="flex items-center gap-2 px-1">
+                    <Activity size={18} className="text-red-500" />
+                    <h2 className="text-sm font-black text-slate-400 uppercase tracking-[0.2em]">Indicadores de Vulnerabilidad (NBI)</h2>
                 </div>
-                <div className="space-y-6 text-center max-w-2xl mx-auto">
-                    <p className="text-sm font-medium text-slate-500 leading-relaxed">
-                        Cálculo basado en la relación entre <span className="font-bold text-slate-700 text-base">v.habitantes / v.dormitorios</span> superiores a 3.0 por unidad habitacional.
-                    </p>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="p-5 bg-red-50 rounded-2xl border border-red-100">
-                            <p className="text-[10px] font-black text-red-400 uppercase tracking-widest">Nivel Crítico (+3)</p>
-                            <p className="text-2xl font-black text-red-600">{data?.crowding?.critico}</p>
-                        </div>
-                        <div className="p-5 bg-orange-50 rounded-2xl border border-orange-100">
-                            <p className="text-[10px] font-black text-orange-400 uppercase tracking-widest">Medio (2-3)</p>
-                            <p className="text-2xl font-black text-orange-600">{data?.crowding?.medio}</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-8">
-                {/* BLOQUE DEMOGRÁFICO REAL */}
-                <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-8">
-                    <div className="flex justify-between items-center border-b pb-4">
-                        <h3 className="text-xl font-black text-slate-800 flex items-center gap-2">
-                            <Users className="text-green-500" />
-                            Caracterización del Ciudadano (NBI_persona)
-                        </h3>
-                        <span className="text-[10px] font-black bg-slate-100 text-slate-500 px-3 py-1 rounded-full uppercase">Total: {data?.infrastructure?.total || 0} Hogares</span>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                        {/* Situación Laboral Real - PRIORITIZED */}
-                        <div>
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6">Ocupación / Situación Laboral</p>
-                            <div className="space-y-4">
-                                {data?.demographics?.laboral?.slice(0, 4).map((l: any, i: number) => (
-                                    <div key={i} className="flex justify-between items-center p-3 bg-slate-50 rounded-xl border border-slate-100">
-                                        <div className="flex items-center gap-3">
-                                            <Briefcase size={14} className="text-slate-400" />
-                                            <span className="text-xs font-bold text-slate-600">{getSituacionLabel(l.situacion_laboral)}</span>
-                                        </div>
-                                        <span className="text-sm font-black text-slate-800">{l.count}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Distribución por Sexo */}
-                        <div>
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6">Género Relevado</p>
-                            <div className="space-y-4">
-                                {data?.demographics?.sexo?.map((s: any, i: number) => (
-                                    <div key={i} className="space-y-1">
-                                        <div className="flex justify-between text-xs font-bold">
-                                            <span>{getSexoLabel(s.sexo)}</span>
-                                            <span>{s.count} personas</span>
-                                        </div>
-                                        <div className="h-2 w-full bg-slate-100 rounded-full">
-                                            <div
-                                                className="h-full bg-green-500 rounded-full"
-                                                style={{ width: `${(s.count / (data.infrastructure?.total || 1)) * 100}%` }}
-                                            />
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {/* NBI Sanitarias */}
+                    <div className="bg-white p-6 rounded-[32px] border border-red-100 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
+                        <div className="flex flex-col h-full justify-between gap-4 relative z-10">
+                            <div className="space-y-1">
+                                <div className="flex justify-between items-start">
+                                    <p className="text-[10px] font-black text-red-500 uppercase tracking-widest">NBI Sanitarias</p>
+                                    <div className="group/tip relative">
+                                        <HelpCircle size={14} className="text-slate-300 hover:text-red-400 cursor-help transition-colors" />
+                                        <div className="absolute right-0 top-6 w-48 p-3 bg-slate-800 text-white text-[10px] font-bold rounded-xl opacity-0 group-hover/tip:opacity-100 transition-opacity z-50 pointer-events-none shadow-xl border border-slate-700">
+                                            Hogares sin red cloacal o retrete instalado.
                                         </div>
                                     </div>
-                                ))}
+                                </div>
+                                <h3 className="text-lg font-black text-slate-800 tracking-tight">Condiciones</h3>
+                            </div>
+                            <div className="flex items-end justify-between">
+                                <div className="text-4xl font-black text-red-600 tracking-tighter">
+                                    {nbiSanitarioPercent}%
+                                </div>
+                                <Waves size={24} className="text-red-200 mb-1" />
                             </div>
                         </div>
                     </div>
-                </div>
 
-                {/* INVERSIÓN REAL POR PROGRAMA */}
-                <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm space-y-8">
-                    <div className="flex justify-between items-center border-b pb-4">
-                        <h3 className="text-xl font-black text-slate-800 flex items-center gap-2">
-                            <Coins className="text-yellow-500" />
-                            Inversión Real por Programa
-                        </h3>
-                        <span className="text-[10px] font-black bg-slate-100 text-slate-500 px-3 py-1 rounded-full uppercase">Top Programas</span>
+                    {/* Hacinamiento Crítico */}
+                    <div className="bg-white p-6 rounded-[32px] border border-red-100 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
+                        <div className="flex flex-col h-full justify-between gap-4 relative z-10">
+                            <div className="space-y-1">
+                                <div className="flex justify-between items-start">
+                                    <p className="text-[10px] font-black text-red-500 uppercase tracking-widest">Crítico</p>
+                                    <div className="group/tip relative">
+                                        <HelpCircle size={14} className="text-slate-300 hover:text-red-400 cursor-help transition-colors" />
+                                        <div className="absolute right-0 top-6 w-48 p-3 bg-slate-800 text-white text-[10px] font-bold rounded-xl opacity-0 group-hover/tip:opacity-100 transition-opacity z-50 pointer-events-none shadow-xl border border-slate-700">
+                                            Viviendas con +3 personas por dormitorio relevado.
+                                        </div>
+                                    </div>
+                                </div>
+                                <h3 className="text-lg font-black text-slate-800 tracking-tight">Hacinamiento</h3>
+                            </div>
+                            <div className="flex items-end justify-between">
+                                <div className="text-4xl font-black text-red-600 tracking-tighter">
+                                    {data?.crowding?.critico || 0}
+                                </div>
+                                <AlertTriangle size={24} className="text-red-200 mb-1" />
+                            </div>
+                        </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {data?.programs?.map((p: any, i: number) => (
-                            <div key={i} className="p-5 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col justify-between hover:shadow-md transition-shadow">
-                                <p className="text-xs font-black text-slate-500 uppercase tracking-wider mb-4 h-10">{p.descripcion}</p>
+                    {/* NBI Inasistencia Escolar */}
+                    <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
+                        <div className="flex flex-col h-full justify-between gap-4 relative z-10">
+                            <div className="space-y-1">
+                                <div className="flex justify-between items-start">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">NBI Educación</p>
+                                    <div className="group/tip relative">
+                                        <HelpCircle size={14} className="text-slate-300 hover:text-slate-400 cursor-help transition-colors" />
+                                        <div className="absolute right-0 top-6 w-48 p-3 bg-slate-800 text-white text-[10px] font-bold rounded-xl opacity-0 group-hover/tip:opacity-100 transition-opacity z-50 pointer-events-none shadow-xl border border-slate-700">
+                                            Niños de 6 a 12 años que no asisten a la escuela.
+                                        </div>
+                                    </div>
+                                </div>
+                                <h3 className="text-lg font-black text-slate-800 tracking-tight">Inasistencia</h3>
+                            </div>
+                            <div className="flex items-end justify-between">
+                                <div className={clsx("text-4xl font-black tracking-tighter", nbiEscolarPercent === 0 ? "text-green-600" : "text-slate-800")}>
+                                    {nbiEscolarPercent}%
+                                </div>
+                                <BookOpen size={24} className={clsx("mb-1", nbiEscolarPercent === 0 ? "text-green-200" : "text-slate-200")} />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* NBI Capacidad Subsistencia */}
+                    <div className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm hover:shadow-md transition-all relative overflow-hidden group">
+                        <div className="flex flex-col h-full justify-between gap-4 relative z-10">
+                            <div className="space-y-1">
+                                <div className="flex justify-between items-start">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">NBI Subsistencia</p>
+                                    <div className="group/tip relative">
+                                        <HelpCircle size={14} className="text-slate-300 hover:text-slate-400 cursor-help transition-colors" />
+                                        <div className="absolute right-0 top-6 w-48 p-3 bg-slate-800 text-white text-[10px] font-bold rounded-xl opacity-0 group-hover/tip:opacity-100 transition-opacity z-50 pointer-events-none shadow-xl border border-slate-700">
+                                            Baja escolaridad del jefe y alta carga familiar.
+                                        </div>
+                                    </div>
+                                </div>
+                                <h3 className="text-lg font-black text-slate-800 tracking-tight">Capacidad</h3>
+                            </div>
+                            <div className="flex items-end justify-between">
+                                <div className="text-4xl font-black text-slate-800 tracking-tighter">
+                                    {nbiSubsistenciaPercent}%
+                                </div>
+                                <Coins size={24} className="text-slate-200 mb-1" />
+                            </div>
+                        </div>
+                </div>
+            </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start mt-8">
+                
+                {/* SECCIÓN 2: INVERSIÓN (Bloque Izquierdo - Dominante) */}
+                <div className="lg:col-span-7 space-y-6 h-full">
+                    <div className="bg-white p-8 rounded-[40px] border border-slate-100 shadow-sm h-full flex flex-col">
+                        <div className="flex justify-between items-center border-b border-slate-50 pb-6">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-600">
+                                    <TrendingDown size={20} />
+                                </div>
                                 <div>
-                                    <p className="text-3xl font-black text-slate-800">${Number(p.total_monto).toLocaleString('es-AR')}</p>
-                                    <p className="text-xs font-bold text-slate-400 mt-1">{p.total_beneficiarios} Titulares</p>
+                                    <h3 className="text-lg font-black text-slate-800 tracking-tight">Consumo Presupuestario</h3>
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ejecución Real por Programa</p>
                                 </div>
                             </div>
-                        ))}
+                        </div>
+
+                        <div className="overflow-x-auto mt-6">
+                            <table className="w-full text-left">
+                                <thead>
+                                    <tr className="border-b border-slate-50">
+                                        <th className="pb-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Programa / Descripción Completa</th>
+                                        <th className="pb-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Monto</th>
+                                        <th className="pb-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right px-4">Peso</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-50">
+                                    {data?.programs?.slice(0, 10).map((p: any, i: number) => {
+                                        const totalInversion = data.programs.reduce((acc: number, cur: any) => acc + Number(cur.total_monto), 0) || 1;
+                                        const pesoPercent = Math.round((Number(p.total_monto) / totalInversion) * 100);
+                                        return (
+                                            <tr key={i} className="group hover:bg-slate-50/50 transition-colors">
+                                                <td className="py-4 pr-6">
+                                                    <p className="text-[11px] font-black text-slate-700 uppercase tracking-tight leading-tight">{p.descripcion}</p>
+                                                </td>
+                                                <td className="py-4 text-right whitespace-nowrap">
+                                                    <p className="text-sm font-black text-slate-800">${Number(p.total_monto).toLocaleString('es-AR')}</p>
+                                                </td>
+                                                <td className="py-4 text-right pl-6">
+                                                   <div className="flex items-center justify-end gap-3">
+                                                        <div className="w-12 h-1 bg-slate-100 rounded-full overflow-hidden">
+                                                            <div className="h-full bg-slate-800 rounded-full" style={{ width: `${pesoPercent}%` }} />
+                                                        </div>
+                                                        <span className="text-[10px] font-black text-slate-400 w-6">{pesoPercent}%</span>
+                                                   </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
 
+                {/* COLUMNA DERECHA: CARACTERIZACIÓN + DIGITAL */}
+                <div className="lg:col-span-5 space-y-8">
+                    {/* SECCIÓN 3: CARACTERIZACIÓN (Bloque Superior Derecho) */}
+                    <div className="bg-white p-8 rounded-[40px] border border-slate-100 shadow-sm space-y-8">
+                        <div className="flex items-center gap-3 border-b border-slate-50 pb-6">
+                            <div className="w-10 h-10 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-600">
+                                <Users size={20} />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-black text-slate-800 tracking-tight">Caracterización Poblacional</h3>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Perfíl de Titulares</p>
+                            </div>
+                        </div>
+
+                        <div className="space-y-6">
+                            {/* Empleo */}
+                            <div className="space-y-4">
+                                {data?.demographics?.laboral?.slice(0, 4).map((l: any, i: number) => {
+                                    const totalLaboral = data.demographics.laboral.reduce((acc: number, cur: any) => acc + cur.count, 0) || 1;
+                                    const percent = (l.count / totalLaboral) * 100;
+                                    return (
+                                        <div key={i} className="space-y-1.5 text-slate-600">
+                                            <div className="flex justify-between text-[11px] font-bold uppercase tracking-tighter">
+                                                <span>{getSituacionLabel(l.situacion_laboral)}</span>
+                                                <span className="text-slate-800 font-black">{l.count}</span>
+                                            </div>
+                                            <div className="h-2 w-full bg-slate-50 rounded-full overflow-hidden border border-slate-100">
+                                                <div
+                                                    className="h-full bg-slate-600 rounded-full transition-all duration-1000"
+                                                    style={{ width: `${percent}%` }}
+                                                />
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            {/* Género */}
+                            <div className="pt-6 border-t border-slate-50 space-y-4">
+                                <div className="flex h-5 w-full bg-slate-50 rounded-xl overflow-hidden border border-slate-100">
+                                    {data?.demographics?.sexo?.map((s: any, i: number) => {
+                                        const total = data.demographics.sexo.reduce((acc: number, cur: any) => acc + cur.count, 0) || 1;
+                                        const percent = (s.count / total) * 100;
+                                        const colors = ["bg-slate-800", "bg-slate-400", "bg-slate-200"];
+                                        return (
+                                            <div 
+                                                key={i} 
+                                                className={clsx("h-full transition-all hover:opacity-80", colors[i] || "bg-slate-500")}
+                                                style={{ width: `${percent}%` }}
+                                            />
+                                        );
+                                    })}
+                                </div>
+                                <div className="flex justify-center gap-6">
+                                    {data?.demographics?.sexo?.map((s: any, i: number) => {
+                                        const colors = ["bg-slate-800", "bg-slate-400", "bg-slate-200"];
+                                        return (
+                                            <div key={i} className="flex items-center gap-1.5">
+                                                <div className={clsx("w-2 h-2 rounded-full", colors[i])} />
+                                                <span className="text-[10px] font-black text-slate-500 uppercase">{getSexoLabel(s.sexo)}</span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* SECCIÓN 4: ACCESO DIGITAL (Bloque Inferior Derecho) */}
+                    <div className="bg-slate-900 p-8 rounded-[40px] shadow-xl border border-slate-800 flex items-center justify-between text-white relative overflow-hidden group">
+                        <div className="absolute right-0 top-0 opacity-5 -mr-10 -mt-10 group-hover:scale-110 transition-transform duration-700">
+                            <Wifi size={200} />
+                        </div>
+                        <div className="relative z-10 space-y-4">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-slate-800 rounded-2xl flex items-center justify-center text-slate-400 border border-slate-700">
+                                    <Smartphone size={20} />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-black tracking-tight">Acceso Digital</h3>
+                                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Brecha de Conectividad</p>
+                                </div>
+                            </div>
+                            <div className="flex items-baseline gap-2">
+                                <span className="text-4xl font-black text-white">{data?.infrastructure?.con_internet || 0}</span>
+                                <span className="text-[10px] font-black text-slate-500 uppercase">Hogares Conectados</span>
+                            </div>
+                        </div>
+                        <div className="relative z-10">
+                            <DonutChart 
+                                percent={data?.infrastructure?.total ? Math.round((data.infrastructure.con_internet / data.infrastructure.total) * 100) : 0} 
+                                label="" 
+                                value=""
+                                color="#f8fafc"
+                            />
+                        </div>
+                    </div>
+                </div>
             </div>
 
+            {/* SECCIÓN 5: NAVEGACIÓN */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6 border-t border-slate-200">
+                <Link
+                    href="/educacion"
+                    className="group bg-white p-8 rounded-[40px] border border-slate-100 shadow-sm hover:shadow-md transition-all flex items-center gap-6"
+                >
+                    <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 group-hover:bg-slate-800 group-hover:text-white transition-all">
+                        <BookOpen size={28} />
+                    </div>
+                    <div>
+                        <h4 className="text-lg font-black text-slate-800">Análisis Educativo</h4>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Capital Humano e Instrucción</p>
+                    </div>
+                    <ArrowRight className="ml-auto text-slate-300 group-hover:text-slate-800 transition-colors" />
+                </Link>
+
+                <Link
+                    href="/salud"
+                    className="group bg-white p-8 rounded-[40px] border border-slate-100 shadow-sm hover:shadow-md transition-all flex items-center gap-6"
+                >
+                    <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 group-hover:bg-slate-800 group-hover:text-white transition-all">
+                        <HeartPulse size={28} />
+                    </div>
+                    <div>
+                        <h4 className="text-lg font-black text-slate-800">Reporte de Salud</h4>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Cobertura y Situación Sanitaria</p>
+                    </div>
+                    <ArrowRight className="ml-auto text-slate-300 group-hover:text-slate-800 transition-colors" />
+                </Link>
+            </div>
         </div>
     );
 }
+

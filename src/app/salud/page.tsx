@@ -28,14 +28,16 @@ export default function HealthPage() {
 
     const totalCobertura = data?.cobertura?.reduce((acc: number, curr: any) => acc + curr.count, 0) || 0;
     const sinCobertura = data?.sinCobertura || 0;
-    const totalPersonas = totalCobertura + sinCobertura;
+    const planSumar = data?.planSumar || 0;
+    const totalSinCobertura = sinCobertura + planSumar;
+    const totalPersonas = totalCobertura + totalSinCobertura;
     const porcentajeCobertura = totalPersonas > 0 ? Math.round((totalCobertura / totalPersonas) * 100) : 0;
 
     const healthKpis = [
         { label: "Personas Relevadas", value: totalPersonas.toString(), icon: Users },
-        { label: "Cobertura Médica", value: `${porcentajeCobertura}%`, icon: HeartPulse },
-        { label: "Sin Cobertura (NBI)", value: sinCobertura.toString(), icon: ShieldAlert },
-        { label: "Entidades de Salud", value: data?.cobertura?.length?.toString() || "0", icon: Activity },
+        { label: "Cobertura Médica Real", value: `${porcentajeCobertura}%`, icon: HeartPulse },
+        { label: "Total Sin Cobertura", value: totalSinCobertura.toString(), icon: ShieldAlert },
+        { label: "Incluidos Plan Sumar", value: planSumar.toString(), icon: FilePlus2 },
     ];
 
     return (
@@ -113,8 +115,9 @@ export default function HealthPage() {
                             <div className="flex justify-between items-end border-t border-red-500/10 pt-4 mt-6">
                                 <AlertCircle className="text-red-400 opacity-50" size={32} />
                                 <div className="text-right">
-                                    <p className="text-3xl font-black text-red-400 leading-none mb-1">{sinCobertura}</p>
-                                    <p className="text-[9px] font-black text-red-300/60 uppercase tracking-widest">Ciudadanos Sin O.S.</p>
+                                    <p className="text-3xl font-black text-red-400 leading-none mb-1">{totalSinCobertura}</p>
+                                    <p className="text-[9px] font-black text-red-300/60 uppercase tracking-widest">Total Sin O.S.</p>
+                                    <p className="text-[10px] font-medium text-red-300/80 mt-1">({planSumar} en Plan SUMAR)</p>
                                 </div>
                             </div>
                         </div>

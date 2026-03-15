@@ -17,14 +17,24 @@ export async function GET(request: Request) {
             params.push(from, to);
         }
 
+        let whereClauseCobertura = whereClause + ' AND UPPER(os.descripcion) != "SUMAR"';
         const [cobertura]: any = await connection.execute(`
             SELECT os.descripcion as name, COUNT(p.id) as count 
             FROM NBI_persona p 
             JOIN NBI_obrasocial os ON p.obra_social_id = os.id 
             LEFT JOIN expediente_expediente e ON p.beneficiario_id = e.iniciador_id 
-            ${whereClause} 
+            ${whereClauseCobertura} 
             GROUP BY os.descripcion
             ORDER BY count DESC
+        `, params);
+
+        let whereClauseSumar = whereClause + ' AND UPPER(os.descripcion) = "SUMAR"';
+        const [planSumarRows]: any = await connection.execute(`
+            SELECT COUNT(p.id) as count
+            FROM NBI_persona p 
+            JOIN NBI_obrasocial os ON p.obra_social_id = os.id 
+            LEFT JOIN expediente_expediente e ON p.beneficiario_id = e.iniciador_id 
+            ${whereClauseSumar}
         `, params);
 
         let whereClauseSin = 'WHERE p.obra_social_id IS NULL';
@@ -48,7 +58,8 @@ export async function GET(request: Request) {
             success: true,
             data: {
                 cobertura,
-                sinCobertura: sinCobertura[0].count
+                sinCobertura: sinCobertura[0].count,
+                planSumar: planSumarRows[0].count
             }
         });
     } catch (error: any) {

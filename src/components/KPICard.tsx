@@ -5,13 +5,24 @@ import { useState } from "react";
 interface KPICardProps {
     label: string;
     value: string | number;
+    secondaryValue?: string | number;
+    secondaryLabel?: string;
     icon: LucideIcon;
     description?: string;
     loading?: boolean;
     color?: string; // Optional custom color
 }
 
-export function KPICard({ label, value, icon: Icon, description, loading, color }: KPICardProps) {
+export function KPICard({ 
+    label, 
+    value, 
+    secondaryValue, 
+    secondaryLabel, 
+    icon: Icon, 
+    description, 
+    loading, 
+    color 
+}: KPICardProps) {
     const [showTooltip, setShowTooltip] = useState(false);
 
     const themeColor = color || "#526928"; // Default Ministerio Green
@@ -55,9 +66,17 @@ export function KPICard({ label, value, icon: Icon, description, loading, color 
                 {loading ? (
                     <div className="h-10 w-3/4 bg-slate-100 animate-pulse rounded-lg mt-2" />
                 ) : (
-                    <h3 className="text-4xl font-black text-slate-800 tracking-tighter mt-2">
-                        {value}
-                    </h3>
+                    <div className="flex flex-col">
+                        <h3 className="text-4xl font-black text-slate-800 tracking-tighter mt-2">
+                            {value}
+                        </h3>
+                        {secondaryValue && (
+                            <p className="text-[11px] font-bold text-slate-400 mt-1 flex items-center gap-1.5 uppercase tracking-wide">
+                                <span className="w-1.5 h-1.5 rounded-full bg-slate-300" />
+                                {secondaryLabel || 'de'} <span className="text-slate-600 font-black">{secondaryValue}</span>
+                            </p>
+                        )}
+                    </div>
                 )}
             </div>
 

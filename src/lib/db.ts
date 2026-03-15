@@ -2,6 +2,28 @@ import mysql from 'mysql2/promise';
 import { createSSHTunnel, SSHConfig, TunnelConfig } from './ssh-tunnel';
 
 export const getDBConnection = async () => {
+    // Si no hay configuración de SSH, nos conectamos directamente (como en local)
+    if (!process.env.SSH_HOST) {
+        try {
+            const connection = await mysql.createConnection({
+                host: process.env.DB_HOST,
+                port: parseInt(process.env.DB_PORT || '3306'),
+                user: process.env.DB_USER,
+                password: process.env.DB_PASSWORD,
+                database: process.env.DB_NAME,
+            });
+
+            return {
+                connection, close: async () => {
+                    await connection.end();
+                }
+            };
+        } catch (error) {
+            console.error('Error establishing direct database connection:', error);
+            throw error;
+        }
+    }
+
     const sshConfig: SSHConfig = {
         host: process.env.SSH_HOST || '',
         port: parseInt(process.env.SSH_PORT || '22'),

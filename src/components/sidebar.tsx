@@ -21,9 +21,15 @@ import { createContext, useContext, useState } from "react";
 const menuItems = [
     { name: "Resumen Central", icon: LayoutDashboard, href: "/" },
     { name: "Comedores", icon: UtensilsCrossed, href: "/comedores" },
-    { name: "Perfil Vulnerabilidad", icon: Users, href: "/vulnerabilidad" },
-    { name: "Análisis Educativo", icon: BookOpen, href: "/educacion" },
-    { name: "Reporte de Salud", icon: HeartPulse, href: "/salud" },
+    {
+        name: "Perfil Vulnerabilidad",
+        icon: Users,
+        href: "/vulnerabilidad",
+        subMenu: [
+            { name: "Análisis Educativo", icon: BookOpen, href: "/educacion" },
+            { name: "Reporte de Salud", icon: HeartPulse, href: "/salud" },
+        ]
+    },
     { name: "Gestión Territorial", icon: FileText, href: "/territorial" },
 ];
 
@@ -94,26 +100,51 @@ export function Sidebar() {
             <nav className={clsx("flex-1 space-y-2", compact ? "px-2 py-4" : "px-4 py-4")}>
                 {menuItems.map((item) => {
                     const isActive = pathname === item.href;
+                    const hasSubMenu = (item as any).subMenu && (item as any).subMenu.length > 0;
+                    const isAnySubActive = hasSubMenu && (item as any).subMenu.some((sub: any) => pathname === sub.href);
+
                     return (
-                        <Link
-                            key={item.href}
-                            href={item.href}
-                            onClick={onNavigate}
-                            title={compact ? item.name : undefined}
-                            className={clsx(
-                                "flex items-center rounded-xl transition-all duration-200 group",
-                                compact ? "justify-center p-3" : "gap-3 px-4 py-3",
-                                isActive
-                                    ? "bg-[var(--primary)] text-white font-semibold shadow-lg shadow-green-500/20"
-                                    : "text-gray-600 hover:text-black hover:bg-gray-100"
+                        <div key={item.href} className="space-y-1">
+                            <Link
+                                href={item.href}
+                                onClick={onNavigate}
+                                title={compact ? item.name : undefined}
+                                className={clsx(
+                                    "flex items-center rounded-xl transition-all duration-200 group",
+                                    compact ? "justify-center p-3" : "gap-3 px-4 py-3",
+                                    isActive || (isAnySubActive && !compact)
+                                        ? "bg-[var(--primary)] text-white font-semibold shadow-lg shadow-green-500/20"
+                                        : "text-gray-600 hover:text-black hover:bg-gray-100"
+                                )}
+                            >
+                                <item.icon
+                                    size={20}
+                                    className={clsx("shrink-0", isActive || isAnySubActive ? "text-white" : "group-hover:text-black")}
+                                />
+                                {!compact && <span className="text-sm">{item.name}</span>}
+                            </Link>
+
+                            {hasSubMenu && !compact && (
+                                <div className="ml-8 space-y-1">
+                                    {(item as any).subMenu.map((sub: any) => (
+                                        <Link
+                                            key={sub.href}
+                                            href={sub.href}
+                                            onClick={onNavigate}
+                                            className={clsx(
+                                                "flex items-center gap-3 px-4 py-2 rounded-xl text-xs transition-all duration-200",
+                                                pathname === sub.href
+                                                    ? "text-[var(--primary)] font-bold bg-green-50"
+                                                    : "text-gray-400 hover:text-slate-800 hover:bg-gray-50"
+                                            )}
+                                        >
+                                            <sub.icon size={16} />
+                                            <span>{sub.name}</span>
+                                        </Link>
+                                    ))}
+                                </div>
                             )}
-                        >
-                            <item.icon
-                                size={20}
-                                className={clsx("shrink-0", isActive ? "text-white" : "group-hover:text-black")}
-                            />
-                            {!compact && <span className="text-sm">{item.name}</span>}
-                        </Link>
+                        </div>
                     );
                 })}
             </nav>

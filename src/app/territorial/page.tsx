@@ -141,7 +141,7 @@ function TerritorialPageContent() {
                                     <Truck size={20} />
                                 </div>
                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Diversas Ayudas</p>
-                                <p className="text-sm font-black text-slate-800">Recursos Varios</p>
+                                <p className="text-sm font-black text-slate-800">Recursos</p>
                             </div>
                             <div className="mt-8 flex justify-between items-end">
                                 <p className="text-3xl font-black text-slate-900">

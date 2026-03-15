@@ -77,10 +77,13 @@ export default function EducationPage() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 {/* Instruction Level Breakdown */}
                 <div className="lg:col-span-2 bg-white p-10 rounded-[40px] border border-slate-100 shadow-xl">
-                    <h3 className="text-xl font-black text-slate-800 mb-10 flex items-center gap-3">
-                        <BarChart3 className="text-orange-500" />
-                        Distribución por Nivel Educativo
-                    </h3>
+                    <div className="mb-10">
+                        <h3 className="text-xl font-black text-slate-800 flex items-center gap-3 mb-2">
+                            <BarChart3 className="text-orange-500" />
+                            Distribución por Nivel Educativo
+                        </h3>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Capital Humano e Instrucción Alcanzada</p>
+                    </div>
                     <div className="space-y-6">
                         {sortedLevels.map((inst: any, i: number) => {
                             const maxVal = Math.max(...(data.instructionLevels.map((l: any) => l.value))) || 1;
@@ -105,6 +108,15 @@ export default function EducationPage() {
                             );
                         })}
                     </div>
+
+                    <div className="mt-10 pt-6 border-t border-slate-50 flex items-center gap-3">
+                        <div className="flex-shrink-0 w-8 h-8 bg-orange-50 rounded-lg flex items-center justify-center">
+                            <BookOpen size={14} className="text-orange-500" />
+                        </div>
+                        <p className="text-[11px] text-slate-500 font-bold leading-tight">
+                            * El relevamiento abarca la instrucción de <span className="text-slate-800 uppercase tracking-tighter">todo el grupo familiar</span> y no se limita al titular individual.
+                        </p>
+                    </div>
                 </div>
 
                 {/* Avg Level by Program */}
@@ -113,21 +125,20 @@ export default function EducationPage() {
                         <Presentation className="text-orange-400" />
                         Formación por Programa
                     </h3>
-                    <p className="text-xs text-slate-400 font-bold leading-relaxed uppercase tracking-widest">Nivel de instrucción promedio por programa ministerial:</p>
+                    <p className="text-[10px] text-slate-400 font-bold leading-relaxed uppercase tracking-widest mb-6">Nivel de instrucción predominante por programa ministerial:</p>
                     <div className="space-y-6">
                         {data?.eduByProgram?.slice(0, 8).map((edu: any, i: number) => (
-                            <div key={i} className="flex justify-between items-start gap-4 group border-b border-white/5 pb-4 last:border-0 last:pb-0">
+                            <div key={i} className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-4 group border-b border-white/5 pb-4 last:border-0 last:pb-0">
                                 <span className="text-xs font-bold text-slate-300 group-hover:text-orange-400 transition-colors leading-relaxed uppercase tracking-tighter flex-1">{edu.name}</span>
-                                <div className="text-right shrink-0">
-                                    <p className="text-xl font-black text-white leading-none mb-1">{Number(edu.avg_level).toFixed(1)}</p>
-                                    <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Promedio</p>
+                                <div className="text-left sm:text-right shrink-0 bg-white/5 px-3 py-2 rounded-xl">
+                                    <p className="text-sm font-black text-white leading-none">{getInstructionLabel(Math.round(edu.avg_level))}</p>
                                 </div>
                             </div>
                         ))}
                     </div>
                     <div className="p-6 bg-white/5 border border-white/10 rounded-3xl mt-4">
                         <p className="text-xs text-slate-400 leading-normal font-medium">
-                            Los valores altos representan una mayor formación académica dentro de la población beneficiaria del programa.
+                            Se calcula asignando un valor a cada escalafón educativo. El texto representa la tendencia de formación predominante del grupo familiar asociado al programa.
                         </p>
                     </div>
                 </div>
