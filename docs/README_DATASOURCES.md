@@ -55,5 +55,14 @@ Todos los indicadores están filtrados dinámicamente por el rango de fechas sel
 
 ---
 
+## 3. Comedores (ETL desde Excel)
+
+Los datos de comedores (Interior por localidad, Capital por zona, recursos por comedor) se cargan con el script ETL en **DB COMEDOR** (COMEDOR, ZONA, RACION, BENEFICIO_*).
+
+*   **Fuente:** Excel "Informe 1. ANEXO II bis..." (Capital) y "Informe Anexo II Comedores.xlsx" (Padrón Interior).
+*   **Script:** `scripts/comedores/02_etl_comedores.js` — ver [scripts/comedores/README.md](scripts/comedores/README.md) para comando exacto y variables de entorno (`DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` o `DB_NAME_COMEDORES`).
+
+---
+
 ## Consultas Técnicas
 Las consultas SQL exactas pueden encontrarse en el archivo: `src/lib/services/ministerio.ts`.
