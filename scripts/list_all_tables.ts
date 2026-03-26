@@ -6,7 +6,7 @@ async function main() {
     try {
         const { connection, close } = await getDBConnection();
         const [rows]: any = await connection.execute('SHOW TABLES');
-        console.log(JSON.stringify(rows));
+        console.log(rows);
         await close();
     } catch (e) {
         console.error(e);

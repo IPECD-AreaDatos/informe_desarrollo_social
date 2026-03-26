@@ -1,4 +1,4 @@
-import { getDBConnection } from './src/lib/db';
+import { getDBConnection } from '../src/lib/db';
 
 async function test() {
     const { connection, close } = await getDBConnection();
