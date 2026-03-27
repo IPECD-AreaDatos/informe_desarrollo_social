@@ -13,7 +13,7 @@ import {
     PanelLeft,
 } from "lucide-react";
 import Link from "next/link";
-import Image from "next/image";
+
 import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
 import { createContext, useContext, useState } from "react";
@@ -74,23 +74,20 @@ export function Sidebar() {
             <div className={clsx("flex items-center justify-between", compact ? "p-3" : "p-8")}>
                 {!compact && (
                     <div className="flex flex-1 items-center justify-center">
-                        <Image
-                            src="/Logo_desarrollo_social.png"
+                        <img
+                            src={`${process.env.NODE_ENV === 'production' ? '/desarrollo-social' : ''}/Logo_desarrollo_social.png`}
                             alt="Desarrollo Social"
-                            width={180}
-                            height={60}
-                            priority
+                            style={{ width: 180, height: 60 }}
                             className="object-contain"
                         />
                     </div>
                 )}
                 {compact && (
                     <Link href="/" className="flex shrink-0" onClick={onNavigate}>
-                        <Image
-                            src="/Logo_desarrollo_social.png"
+                        <img
+                            src={`${process.env.NODE_ENV === 'production' ? '/desarrollo-social' : ''}/Logo_desarrollo_social.png`}
                             alt="Desarrollo Social"
-                            width={32}
-                            height={32}
+                            style={{ width: 32, height: 32 }}
                             className="object-contain"
                         />
                     </Link>
@@ -151,11 +148,10 @@ export function Sidebar() {
 
             <div className={clsx("mt-auto", compact ? "p-2" : "p-6")}>
                 <div className={clsx("flex justify-center", compact ? "" : "w-full items-center gap-2 py-3 rounded-xl")}>
-                    <Image
-                        src="/LOGO IPECD-12 (1).png"
+                    <img
+                        src={`${process.env.NODE_ENV === 'production' ? '/desarrollo-social' : ''}/LOGO IPECD-12 (1).png`}
                         alt="IPECD"
-                        width={compact ? 32 : 180}
-                        height={compact ? 32 : 60}
+                        style={{ width: compact ? 32 : 180, height: compact ? 32 : 60 }}
                         className="object-contain"
                     />
                 </div>
