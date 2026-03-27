@@ -73,22 +73,20 @@ export function Sidebar() {
         <>
             <div className={clsx("flex items-center justify-between", compact ? "p-3" : "p-8")}>
                 {!compact && (
-                    <div className="flex flex-1 items-center justify-center">
+                    <div className="flex flex-1 items-center justify-center w-full px-2">
                         <img
                             src={`${process.env.NODE_ENV === 'production' ? '/desarrollo-social' : ''}/Logo_desarrollo_social.png`}
                             alt="Desarrollo Social"
-                            style={{ width: 180, height: 60 }}
-                            className="object-contain"
+                            className="w-full max-w-[200px] h-auto max-h-[80px] object-contain"
                         />
                     </div>
                 )}
                 {compact && (
-                    <Link href="/" className="flex shrink-0" onClick={onNavigate}>
+                    <Link href="/" className="flex shrink-0 items-center justify-center w-full" onClick={onNavigate}>
                         <img
                             src={`${process.env.NODE_ENV === 'production' ? '/desarrollo-social' : ''}/Logo_desarrollo_social.png`}
                             alt="Desarrollo Social"
-                            style={{ width: 32, height: 32 }}
-                            className="object-contain"
+                            className="w-10 h-10 object-contain"
                         />
                     </Link>
                 )}
@@ -146,13 +144,12 @@ export function Sidebar() {
                 })}
             </nav>
 
-            <div className={clsx("mt-auto", compact ? "p-2" : "p-6")}>
-                <div className={clsx("flex justify-center", compact ? "" : "w-full items-center gap-2 py-3 rounded-xl")}>
+            <div className={clsx("mt-auto pb-4", compact ? "p-2" : "p-6 w-full")}>
+                <div className={clsx("flex justify-center", compact ? "" : "w-full items-center px-4 py-2")}>
                     <img
                         src={`${process.env.NODE_ENV === 'production' ? '/desarrollo-social' : ''}/LOGO IPECD-12 (1).png`}
                         alt="IPECD"
-                        style={{ width: compact ? 32 : 180, height: compact ? 32 : 60 }}
-                        className="object-contain"
+                        className={clsx("object-contain", compact ? "w-10 h-10" : "w-full max-w-[180px] h-auto max-h-[70px]")}
                     />
                 </div>
             </div>

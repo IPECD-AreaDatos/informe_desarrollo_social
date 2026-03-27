@@ -39,8 +39,13 @@ function SummaryDashboardContent() {
   const [error, setError] = useState<string | null>(null);
   const searchParams = useSearchParams();
 
-  const from = searchParams.get("from") || "";
-  const to = searchParams.get("to") || "";
+  const now = new Date();
+  const isEarlyMonth = now.getDate() < 10;
+  const defaultFrom = new Date(now.getFullYear(), now.getMonth() - (isEarlyMonth ? 1 : 0), 1).toISOString().split('T')[0];
+  const defaultTo = new Date(now.getFullYear(), now.getMonth() - (isEarlyMonth ? 1 : 0) + 1, 0).toISOString().split('T')[0];
+
+  const from = searchParams.get("from") || defaultFrom;
+  const to = searchParams.get("to") || defaultTo;
   const isAnnual = from && to && from.substring(0, 4) === to.substring(0, 4) && from.endsWith("-01-01") && to.endsWith("-12-31");
   const [logisticsTab, setLogisticsTab] = useState<"destinos" | "salidas" | "recorridos">("destinos");
 
