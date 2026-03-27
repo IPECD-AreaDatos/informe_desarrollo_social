@@ -75,7 +75,7 @@ export default function VulnerabilityPage() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`/api/stats/vulnerability`);
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/stats/vulnerability`);
             const json = await res.json();
             if (json.success) setData(json.data);
         } catch (error) {

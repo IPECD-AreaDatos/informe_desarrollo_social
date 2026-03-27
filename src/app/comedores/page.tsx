@@ -99,7 +99,7 @@ function ComedoresPageContent() {
   const [loadingDetail, setLoadingDetail] = useState(false);
 
   useEffect(() => {
-    fetch("/api/comedores/periodos")
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/comedores/periodos`)
       .then((r) => r.json())
       .then((j) => {
         if (j.success && j.data?.length) {
@@ -113,7 +113,7 @@ function ComedoresPageContent() {
   useEffect(() => {
     if (periodo === undefined) return;
     setLoadingSummary(true);
-    fetch(`/api/comedores/summary?periodo=${encodeURIComponent(periodo)}`)
+    fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/comedores/summary?periodo=${encodeURIComponent(periodo)}`)
       .then((r) => r.json())
       .then((j) => {
         if (j.success) setSummary(j.data);
@@ -124,7 +124,7 @@ function ComedoresPageContent() {
   useEffect(() => {
     setLoadingRankings(true);
     fetch(
-      `/api/comedores/rankings?periodo=${encodeURIComponent(periodo)}&tipo=${rankingTipo}&limit=50`
+      `${process.env.NEXT_PUBLIC_API_URL || ""}/api/comedores/rankings?periodo=${encodeURIComponent(periodo)}&tipo=${rankingTipo}&limit=50`
     )
       .then((r) => r.json())
       .then((j) => {
@@ -140,7 +140,7 @@ function ComedoresPageContent() {
     }
     setLoadingDetail(true);
     fetch(
-      `/api/comedores/${detailId}?periodo=${encodeURIComponent(periodo)}`
+      `${process.env.NEXT_PUBLIC_API_URL || ""}/api/comedores/${detailId}?periodo=${encodeURIComponent(periodo)}`
     )
       .then((r) => r.json())
       .then((j) => {

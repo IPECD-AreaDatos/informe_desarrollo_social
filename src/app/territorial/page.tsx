@@ -33,7 +33,7 @@ function TerritorialPageContent() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`/api/stats/territorial?from=${from}&to=${to}`);
+            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/stats/territorial?from=${from}&to=${to}`);
             const json = await res.json();
             if (json.success) setData(json.data);
         } catch (error) {

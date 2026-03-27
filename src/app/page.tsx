@@ -47,7 +47,7 @@ function SummaryDashboardContent() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/stats/ministerio?from=${from}&to=${to}`);
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/stats/ministerio?from=${from}&to=${to}`);
       if (!res.ok) throw new Error("Error fetching data");
       const d = await res.json();
       setData(d.data);
