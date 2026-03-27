@@ -59,3 +59,23 @@ export const getDBConnection = async () => {
         throw error;
     }
 };
+
+export const getComedoresConnection = async () => {
+    try {
+        const connection = await mysql.createConnection({
+            host: process.env.HOST_DBB1,
+            user: process.env.USER_DBB1,
+            password: process.env.PASSWORD_DBB1,
+            database: process.env.BASE_DESARROLLO_SOCIAL,
+        });
+
+        return {
+            connection, close: async () => {
+                await connection.end();
+            }
+        };
+    } catch (error) {
+        console.error('Error establishing direct database connection for comedores:', error);
+        throw error;
+    }
+};

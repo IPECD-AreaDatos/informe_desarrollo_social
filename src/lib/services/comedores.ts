@@ -1,4 +1,4 @@
-import { getDBConnection } from '../db';
+import { getComedoresConnection } from '../db';
 
 export type Ambito = 'CAPITAL' | 'INTERIOR';
 export type RankingTipo = 'beneficiarios' | 'gas' | 'limpieza' | 'frescos' | 'responsables';
@@ -68,7 +68,7 @@ export interface PeriodoOption {
 }
 
 async function getSummaryByPeriodo(periodo: string): Promise<ComedoresSummary> {
-  const { connection, close } = await getDBConnection();
+  const { connection, close } = await getComedoresConnection();
   try {
     const [totalRows]: any = await connection.execute(
       `SELECT COUNT(DISTINCT c.comedor_id) AS total FROM COMEDOR c`
@@ -203,7 +203,7 @@ async function getRankings(params: {
   limit?: number;
   offset?: number;
 }): Promise<ComedoresRankingRow[]> {
-  const { connection, close } = await getDBConnection();
+  const { connection, close } = await getComedoresConnection();
   const limitVal = Math.min(Math.max(0, params.limit ?? 50), 100);
   const offsetVal = Math.max(0, params.offset ?? 0);
 
@@ -336,7 +336,7 @@ async function getRankings(params: {
 }
 
 async function getComedorDetail(comedorId: number, periodo: string): Promise<ComedorDetail | null> {
-  const { connection, close } = await getDBConnection();
+  const { connection, close } = await getComedoresConnection();
   try {
     const [comedor]: any = await connection.execute(
       `SELECT c.comedor_id, c.numero_oficial, c.nombre, c.domicilio, c.responsable_nombre, c.telefono,
@@ -443,7 +443,7 @@ async function getComedorDetail(comedorId: number, periodo: string): Promise<Com
 }
 
 async function getPeriodosDisponibles(): Promise<PeriodoOption[]> {
-  const { connection, close } = await getDBConnection();
+  const { connection, close } = await getComedoresConnection();
   try {
     const [plan]: any = await connection.execute(
       `SELECT DISTINCT plan_ref AS valor FROM RACION WHERE plan_ref IS NOT NULL AND plan_ref != '' ORDER BY 1 DESC LIMIT 20`
