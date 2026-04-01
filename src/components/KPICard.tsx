@@ -7,6 +7,8 @@ interface KPICardProps {
     value: string | number;
     secondaryValue?: string | number;
     secondaryLabel?: string;
+    /** Texto auxiliar debajo del valor secundario (ej. desglose por ámbito) */
+    noteText?: string;
     icon: LucideIcon;
     description?: string;
     loading?: boolean;
@@ -18,6 +20,7 @@ export function KPICard({
     value, 
     secondaryValue, 
     secondaryLabel, 
+    noteText,
     icon: Icon, 
     description, 
     loading, 
@@ -75,6 +78,9 @@ export function KPICard({
                                 <span className="w-1.5 h-1.5 rounded-full bg-slate-300" />
                                 {secondaryLabel || 'de'} <span className="text-slate-600 font-black">{secondaryValue}</span>
                             </p>
+                        )}
+                        {noteText && (
+                            <p className="text-[10px] text-slate-500 mt-1.5 leading-snug">{noteText}</p>
                         )}
                     </div>
                 )}

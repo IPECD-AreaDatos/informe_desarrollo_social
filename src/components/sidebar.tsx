@@ -20,7 +20,7 @@ import { createContext, useContext, useState } from "react";
 
 const menuItems = [
     { name: "Resumen Central", icon: LayoutDashboard, href: "/" },
-    { name: "Comedores", icon: UtensilsCrossed, href: "/comedores" },
+    { name: "Seguridad alimentaria", icon: UtensilsCrossed, href: "/comedores" },
     {
         name: "Perfil Vulnerabilidad",
         icon: Users,
@@ -68,6 +68,7 @@ export function Sidebar() {
     const pathname = usePathname();
     const [open, setOpen] = useState(false);
     const { collapsed, setCollapsed } = useSidebar();
+    const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
     const renderNav = (onNavigate?: () => void, compact?: boolean) => (
         <>
@@ -75,7 +76,7 @@ export function Sidebar() {
                 {!compact && (
                     <div className="flex flex-1 items-center justify-center w-full px-2">
                         <img
-                            src={`${process.env.NODE_ENV === 'production' ? '/desarrollo-social' : ''}/Logo_desarrollo_social.png`}
+                            src={`${basePath}/Logo_desarrollo_social.png`}
                             alt="Desarrollo Social"
                             className="w-full max-w-[200px] h-auto max-h-[80px] object-contain"
                         />
@@ -84,7 +85,7 @@ export function Sidebar() {
                 {compact && (
                     <Link href="/" className="flex shrink-0 items-center justify-center w-full" onClick={onNavigate}>
                         <img
-                            src={`${process.env.NODE_ENV === 'production' ? '/desarrollo-social' : ''}/Logo_desarrollo_social.png`}
+                            src={`${basePath}/Logo_desarrollo_social.png`}
                             alt="Desarrollo Social"
                             className="w-10 h-10 object-contain"
                         />
@@ -147,7 +148,7 @@ export function Sidebar() {
             <div className={clsx("mt-auto pb-4", compact ? "p-2" : "p-6 w-full")}>
                 <div className={clsx("flex justify-center", compact ? "" : "w-full items-center px-4 py-2")}>
                     <img
-                        src={`${process.env.NODE_ENV === 'production' ? '/desarrollo-social' : ''}/LOGO IPECD-12 (1).png`}
+                        src={`${basePath}/LOGO IPECD-12 (1).png`}
                         alt="IPECD"
                         className={clsx("object-contain", compact ? "w-10 h-10" : "w-full max-w-[180px] h-auto max-h-[70px]")}
                     />

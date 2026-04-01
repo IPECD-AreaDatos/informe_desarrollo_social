@@ -62,11 +62,21 @@ export const getDBConnection = async () => {
 
 export const getComedoresConnection = async () => {
     try {
+        const host = process.env.HOST_DBB1 || process.env.DB_HOST;
+        const user = process.env.USER_DBB1 || process.env.DB_USER;
+        const password = process.env.PASSWORD_DBB1 || process.env.DB_PASSWORD;
+        const database =
+            process.env.BASE_DESARROLLO_SOCIAL ||
+            process.env.DB_NAME_COMEDORES ||
+            process.env.DB_NAME;
+        const port = parseInt(process.env.DB_PORT || '3306');
+
         const connection = await mysql.createConnection({
-            host: process.env.HOST_DBB1,
-            user: process.env.USER_DBB1,
-            password: process.env.PASSWORD_DBB1,
-            database: process.env.BASE_DESARROLLO_SOCIAL,
+            host,
+            port,
+            user,
+            password,
+            database,
         });
 
         return {

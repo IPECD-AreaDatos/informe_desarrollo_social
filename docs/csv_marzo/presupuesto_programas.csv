@@ -1,0 +1,5 @@
+﻿"programa","descripcion","ano","periodicidad","cantidad_unidades","precio_unitario","monto_por_periodo","monto_mensual","monto_anual","fuente_financiamiento"
+"TEKNOFOOD - RACIONES (COMIDAS + REFRIGERIOS)","Provisión diaria de comidas (29.226) y refrigerios (33.838) - precio $1.600/ración","2026.0","DIARIO","63064.0","1600.0","100902400.0","3027072000.0","25427404800.0","ACCION SOCIAL / MIN. Y FLIA."
+"GAS ENVASADO","Provision mensual de garrafas de gas a comedores y merenderos","2026.0","MENSUAL","481.0","","11570000.0","11570000.0","138840000.0","RECURSOS TESORO GRAL PROVINCIA"
+"ARTICULOS DE LIMPIEZA","Kit de limpieza bimestral para comedores y merenderos capital","2026.0","BIMESTRAL","155.0","","13311798.0","6655899.0","79870788.0","RECURSOS TESORO GRAL PROVINCIA"
+"FUMIGACION","Fumigacion trimestral de comedores y merenderos","2026.0","TRIMESTRAL","163.0","","2600000.0","866667.0","10400000.0","RECURSOS TESORO GRAL PROVINCIA"

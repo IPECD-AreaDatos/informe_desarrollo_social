@@ -37,7 +37,8 @@ docker compose --profile etl run --rm etl --solo-crear
 docker compose --profile etl run --rm -v $(pwd):/data etl \
   --excel1 "/data/Informe 1. ANEXO II bis. Crudo detalle beneficios Comedores Capital.xlsx" \
   --excel2 "/data/Informe Anexo II Comedores.xlsx" \
-  --periodo "Plan Verano 2026"
+  --periodo "Plan Verano 2026" \
+  --marzo-dir "/data/docs/marzo"
 ```
 
 **Por qué `/data/` en las rutas:** Dentro del contenedor el proceso trabaja en `/app` y no ve tu disco directamente. Con `-v $(pwd):/data` la raíz del proyecto (donde están los Excel) se monta **dentro del contenedor** en la carpeta `/data`. Por eso las rutas que recibe el script tienen que ser las del contenedor: `/data/nombre_archivo.xlsx`. En la raíz del proyecto es el mismo archivo; la ruta cambia según quién lee (tu máquina = raíz, contenedor = `/data`).
@@ -60,12 +61,14 @@ Ejecuta `01_schema_comedores.sql` sobre la base configurada.
 node scripts/comedores/02_etl_comedores.js \
   --excel1 "ruta/al/Informe 1. ANEXO II bis. Crudo detalle beneficios Comedores Capital.xlsx" \
   --excel2 "ruta/al/Informe Anexo II Comedores.xlsx" \
-  --periodo "Plan Verano 2026"
+  --periodo "Plan Verano 2026" \
+  --marzo-dir "docs/marzo"
 ```
 
 - **`--excel1`**: Excel Capital (FRUTAS Y VERDURAS, CARNE, GAS, ART. DE LIMPIEZA, FUMIGACION).
 - **`--excel2`**: Excel Anexo II (hoja PADRON INTERIOR).
 - **`--periodo`**: Etiqueta de periodo (ej. `"2026-01"` o `"Plan Verano 2026"`); se guarda en `plan_ref` (Interior) y en `periodo` (Capital).
+- **`--marzo-dir`**: Carpeta con Excel de marzo para el módulo de montos (`ART DE LIMPIEZA.xlsx`, `Presupuesto 2026 Fumigación.xlsx`, `Seguridad Alimentaria Presupuesto 2026.xlsx`, `PRODUCTOS FRESCOS.xlsx`, `TEKNOFOOD.xlsx`). Si se omite, usa `docs/marzo`.
 
 Si se omite `--excel1` o `--excel2`, se salta la carga de Capital o Interior respectivamente.
 
@@ -81,8 +84,20 @@ Si se omite `--excel1` o `--excel2`, se salta la carga de Capital o Interior res
   ```
   Luego volver a ejecutar el ETL con los mismos `--excel1`, `--excel2` y `--periodo`.
 
-- **`01_schema_comedores.sql`**: CREATE TABLE en orden (TIPO_COMEDOR, SUBTIPO_COMEDOR, ORGANISMO, ZONA, COMEDOR, RACION, BENEFICIO_GAS, BENEFICIO_LIMPIEZA, BENEFICIO_FUMIGACION, BENEFICIO_FRESCOS). Se puede ejecutar a mano en MySQL.
-- **`02_etl_comedores.js`**: Crea esquema, carga catálogos (TIPO, SUBTIPO), ETL Interior (ZONA + COMEDOR + RACION), ETL Capital (ZONA + COMEDOR + BENEFICIO_*), ETL Padrón Capital (desde excel2: hoja PADRON CAPITAL, actualiza enlace Google Maps y coordenadas en COMEDOR Capital).
+- **`01_schema_comedores.sql`**: CREATE TABLE en orden (modelo base + módulo `PRESUPUESTO_*` para montos marzo). Se puede ejecutar a mano en MySQL.
+- **`02_etl_comedores.js`**: Crea esquema, carga catálogos (TIPO, SUBTIPO), ETL Interior (ZONA + COMEDOR + RACION), ETL Capital (ZONA + COMEDOR + BENEFICIO_*), ETL Padrón Capital (maps/coordenadas) y ETL marzo de montos en tablas `PRESUPUESTO_*`.
+
+## Reconciliación de montos (marzo)
+
+El ETL guarda los montos de control para reconciliación contra Excel:
+
+- Limpieza: `13.311.798,00`
+- Fumigación: `2.600.000,00`
+- Gas: `11.570.000,00`
+- Frescos (frutas/verduras): `107.989.875,733`
+- Frescos (carne): `137.123.110,80`
+
+Además registra detalle por dependencia/ítem (cuando la hoja lo permite) para ranking por gastos y composición del gasto en detalle.
 
 ## Origen del indicador "Beneficiarios (Interior)"
 

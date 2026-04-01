@@ -2,13 +2,25 @@ import { NextResponse } from 'next/server';
 import { comedoresService } from '@/lib/services/comedores';
 import type { RankingTipo, Ambito } from '@/lib/services/comedores';
 
-const TIPOS: RankingTipo[] = ['beneficiarios', 'gas', 'limpieza', 'frescos', 'responsables'];
+const TIPOS: RankingTipo[] = [
+  'beneficiarios',
+  'gas',
+  'limpieza',
+  'frescos',
+  'responsables',
+  'raciones',
+  'becados',
+  'refrigerio_comida',
+  'carnes',
+  'otros_recursos',
+  'promedio_beneficiario',
+];
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const periodo = searchParams.get('periodo') ?? '';
-    const tipo = (searchParams.get('tipo') ?? 'gas') as RankingTipo;
+    const tipo = (searchParams.get('tipo') ?? 'raciones') as RankingTipo;
     const ambito = searchParams.get('ambito') as Ambito | undefined;
     const limit = Math.min(parseInt(searchParams.get('limit') ?? '50', 10), 100);
     const offset = parseInt(searchParams.get('offset') ?? '0', 10);
