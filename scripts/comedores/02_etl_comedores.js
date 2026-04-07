@@ -14,13 +14,14 @@ const XLSX = require('xlsx');
 const SCHEMA_PATH = path.join(__dirname, '01_schema_comedores.sql');
 
 function parseArgs() {
-  const args = { soloCrear: false, excel1: '', excel2: '', periodo: '', marzoDir: '' };
+  const args = { soloCrear: false, excel1: '', excel2: '', periodo: '', marzoDir: '', csvDir: '' };
   for (let i = 2; i < process.argv.length; i++) {
     if (process.argv[i] === '--solo-crear') args.soloCrear = true;
     else if (process.argv[i] === '--excel1' && process.argv[i + 1]) { args.excel1 = process.argv[++i]; }
     else if (process.argv[i] === '--excel2' && process.argv[i + 1]) { args.excel2 = process.argv[++i]; }
     else if (process.argv[i] === '--periodo' && process.argv[i + 1]) { args.periodo = process.argv[++i]; }
     else if (process.argv[i] === '--marzo-dir' && process.argv[i + 1]) { args.marzoDir = process.argv[++i]; }
+    else if (process.argv[i] === '--csv-dir' && process.argv[i + 1]) { args.csvDir = process.argv[++i]; }
   }
   return args;
 }
@@ -118,6 +119,23 @@ async function ensurePresupuestoTeknofoodColumns(conn, databaseName) {
   }
 }
 
+async function ensurePresupuestoColumnsCapacity(conn) {
+  try {
+    await conn.query(
+      'ALTER TABLE PRESUPUESTO_DEPENDENCIA MODIFY COLUMN monto DECIMAL(20,2) NULL DEFAULT 0'
+    );
+  } catch (e) {
+    console.warn('[ETL] Ajuste DECIMAL PRESUPUESTO_DEPENDENCIA.monto:', e.message);
+  }
+  try {
+    await conn.query(
+      'ALTER TABLE PRESUPUESTO_ITEM MODIFY COLUMN monto DECIMAL(20,2) NULL DEFAULT 0'
+    );
+  } catch (e) {
+    console.warn('[ETL] Ajuste DECIMAL PRESUPUESTO_ITEM.monto:', e.message);
+  }
+}
+
 function normalizeHeader(str) {
   if (typeof str !== 'string') return '';
   return str.toString().trim().toUpperCase().replace(/\s+/g, ' ');
@@ -131,6 +149,49 @@ function normalizeForMatch(str) {
     .toUpperCase()
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+function normalizeCode(str) {
+  return normalizeForMatch(str).replace(/[^A-Z0-9]/g, '');
+}
+
+function parseCsvLine(line) {
+  const out = [];
+  let inQuote = false;
+  let buf = '';
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') {
+      if (inQuote && line[i + 1] === '"') {
+        buf += '"';
+        i++;
+        continue;
+      }
+      inQuote = !inQuote;
+      continue;
+    }
+    if (c === ',' && !inQuote) {
+      out.push(buf);
+      buf = '';
+      continue;
+    }
+    buf += c;
+  }
+  out.push(buf);
+  return out;
+}
+
+function readCsvObjects(filePath) {
+  const raw = fs.readFileSync(filePath, 'utf8');
+  const lines = raw.split(/\r?\n/).filter((l) => l.trim());
+  if (!lines.length) return [];
+  const headers = parseCsvLine(lines[0]).map((h) => String(h || '').trim());
+  return lines.slice(1).map((line) => {
+    const vals = parseCsvLine(line);
+    const obj = {};
+    headers.forEach((h, i) => { obj[h] = String(vals[i] || '').trim(); });
+    return obj;
+  });
 }
 
 /** Cache en memoria del padrón COMEDOR para resolver por nombre normalizado (misma lógica que normalizeForMatch). */
@@ -2517,8 +2578,13 @@ async function etlMarzoTeknofood(conn, filePath, periodo) {
     montoDepsPadron[montoDepsPadron.length - 1].montoDep =
       Math.round((montoDepsPadron[montoDepsPadron.length - 1].montoDep + (montoMensualTekno - sumMontosPadron)) * 100) / 100;
   }
+  let skippedSinComedorTekno = 0;
   for (const { p, montoDep } of montoDepsPadron) {
     const comedorId = await resolveComedorByKeys(conn, null, p.nombre, p.domicilio);
+    if (!comedorId) {
+      skippedSinComedorTekno++;
+      continue;
+    }
     await upsertDependencia(conn, {
       corteId: corteDia,
       comedorId,
@@ -2536,6 +2602,9 @@ async function etlMarzoTeknofood(conn, filePath, periodo) {
       sheetName: p.sheetName,
       sourceHash: hashSource(sourceFile, p.sheetName, 'PADRON', p.rowIndex, p.nombre, p.domicilio, p.servicio, p.beneficiarios, p.resp),
     });
+  }
+  if (skippedSinComedorTekno > 0) {
+    console.log('[ETL Marzo Teknofood] Filas omitidas por no matchear COMEDOR:', skippedSinComedorTekno);
   }
 }
 
@@ -2564,6 +2633,126 @@ async function etlMarzo(conn, marzoDir, periodo) {
   if (tekno) await etlMarzoTeknofood(conn, path.join(marzoDir, tekno), periodo);
 }
 
+async function etlBeneficiariosCsvCapital(conn, csvDir, periodo) {
+  const filePath = path.join(csvDir, 'beneficiarios_por_servicio.csv');
+  if (!fs.existsSync(filePath)) {
+    console.warn('[ETL Beneficiarios CSV] No existe:', filePath);
+    return;
+  }
+  const rows = readCsvObjects(filePath);
+  if (!rows.length) {
+    console.warn('[ETL Beneficiarios CSV] Sin filas en:', filePath);
+    return;
+  }
+
+  const [capComedores] = await conn.query(
+    `SELECT c.comedor_id, c.numero_oficial, c.nombre
+     FROM COMEDOR c
+     JOIN ZONA z ON z.zona_id = c.zona_id
+     WHERE z.ambito = 'CAPITAL'`
+  );
+  const byCode = new Map();
+  const byName = new Map();
+  for (const c of capComedores) {
+    const codeK = normalizeCode(c.numero_oficial || '');
+    if (codeK && !byCode.has(codeK)) byCode.set(codeK, c.comedor_id);
+    const nameK = normalizeForMatch(c.nombre || '');
+    if (nameK && !byName.has(nameK)) byName.set(nameK, c.comedor_id);
+  }
+
+  const planRef = periodo || null;
+  const agg = new Map();
+  const zonaFallbackCapital = await resolveZonaFallbackCapital(conn);
+  if (!zonaFallbackCapital) {
+    console.warn('[ETL Beneficiarios CSV] No hay zona CAPITAL de fallback, se omite carga.');
+    return;
+  }
+
+  let createdComedores = 0;
+  for (const r of rows) {
+    const region = normalizeForMatch(r.region || r.zona || '');
+    if (region && !region.includes('CAPITAL')) continue;
+    const tipoRaw = normalizeForMatch(r.tipo_servicio || '');
+    const tipoServicio = tipoRaw.startsWith('COMIDA')
+      ? 'COMIDA'
+      : tipoRaw.startsWith('REFRIG')
+        ? 'REFRIGERIO'
+        : null;
+    if (!tipoServicio) continue;
+    const cantidad = parseInt(String(r.cantidad_beneficiarios || '0'), 10);
+    if (!Number.isFinite(cantidad)) continue;
+    const codeK = normalizeCode(r.cod_ceres || '');
+    const nameK = normalizeForMatch(r.nombre_dependencia || '');
+    let comedorId = null;
+    if (codeK && byCode.has(codeK)) comedorId = byCode.get(codeK);
+    else if (nameK && byName.has(nameK)) comedorId = byName.get(nameK);
+    if (!comedorId) {
+      const numRaw = String(r.cod_ceres || '').trim();
+      const num = numRaw && numRaw.toUpperCase() !== 'S/N' ? numRaw.slice(0, 10) : null;
+      const nombre = String(r.nombre_dependencia || '').trim().slice(0, 200) || 'Sin nombre';
+      try {
+        const [ins] = await conn.query(
+          `INSERT INTO COMEDOR (numero_oficial, nombre, domicilio, zona_id)
+           VALUES (?, ?, NULL, ?)`,
+          [num, nombre, zonaFallbackCapital]
+        );
+        comedorId = ins.insertId;
+        createdComedores++;
+      } catch (e) {
+        if (e && e.code === 'ER_DUP_ENTRY') {
+          const [dupe] = await conn.query(
+            `SELECT comedor_id FROM COMEDOR
+             WHERE (numero_oficial <=> ?) OR TRIM(nombre) = ?
+             LIMIT 1`,
+            [num, nombre]
+          );
+          if (dupe.length > 0) comedorId = dupe[0].comedor_id;
+        } else {
+          throw e;
+        }
+      }
+      if (comedorId) {
+        const codeNew = normalizeCode(num || '');
+        if (codeNew && !byCode.has(codeNew)) byCode.set(codeNew, comedorId);
+        const nameNew = normalizeForMatch(nombre);
+        if (nameNew && !byName.has(nameNew)) byName.set(nameNew, comedorId);
+      }
+    }
+    if (!comedorId) continue;
+    const key = `${comedorId}|${tipoServicio}`;
+    agg.set(key, (agg.get(key) || 0) + cantidad);
+  }
+
+  let updated = 0;
+  let inserted = 0;
+  for (const [key, cantidad] of agg.entries()) {
+    const [comedorIdStr, tipoServicio] = key.split('|');
+    const comedorId = Number(comedorIdStr);
+    const [exist] = await conn.query(
+      `SELECT racion_id FROM RACION WHERE comedor_id = ? AND tipo_servicio = ? AND plan_ref <=> ? LIMIT 1`,
+      [comedorId, tipoServicio, planRef]
+    );
+    if (exist.length > 0) {
+      await conn.query(
+        `UPDATE RACION SET cantidad_beneficiarios = ? WHERE racion_id = ?`,
+        [cantidad, exist[0].racion_id]
+      );
+      updated++;
+    } else {
+      await conn.query(
+        `INSERT INTO RACION (comedor_id, tipo_servicio, cantidad_beneficiarios, plan_ref, st, observaciones, periodo_inicio)
+         VALUES (?, ?, ?, ?, NULL, 'Carga CSV beneficiarios CAPITAL', CURDATE())`,
+        [comedorId, tipoServicio, cantidad, planRef]
+      );
+      inserted++;
+    }
+  }
+
+  const matchedCount = agg.size;
+  const totalCsv = rows.filter((r) => normalizeForMatch(r.region || r.zona || '').includes('CAPITAL')).length;
+  console.log('[ETL Beneficiarios CSV] Filas CSV capital:', totalCsv, '| matched comedor+servicio:', matchedCount, '| comedores creados:', createdComedores, '| inserts:', inserted, '| updates:', updated);
+}
+
 async function logResumen(conn) {
   const tablas = ['TIPO_COMEDOR', 'SUBTIPO_COMEDOR', 'ORGANISMO', 'ZONA', 'COMEDOR', 'RACION', 'BENEFICIO_GAS', 'BENEFICIO_LIMPIEZA', 'BENEFICIO_FUMIGACION', 'BENEFICIO_FRESCOS', 'PRESUPUESTO_CORTE', 'PRESUPUESTO_RESUMEN', 'PRESUPUESTO_DEPENDENCIA', 'PRESUPUESTO_ITEM', 'PRESUPUESTO_TEKNOFOOD', 'BECARIO_LINEA'];
   console.log('\n--- Resumen en BD (filas por tabla) ---');
@@ -2590,6 +2779,7 @@ async function main() {
   try {
     await runSchema(conn);
     await ensurePresupuestoTeknofoodColumns(conn, config.database);
+    await ensurePresupuestoColumnsCapacity(conn);
     if (args.soloCrear) {
       console.log('Modo --solo-crear: solo se ejecutó el esquema.');
       return;
@@ -2600,11 +2790,15 @@ async function main() {
     const marzoDir = args.marzoDir
       ? (path.isAbsolute(args.marzoDir) ? args.marzoDir : path.resolve(process.cwd(), args.marzoDir))
       : path.resolve(process.cwd(), 'docs/marzo');
+    const csvDir = args.csvDir
+      ? (path.isAbsolute(args.csvDir) ? args.csvDir : path.resolve(process.cwd(), args.csvDir))
+      : path.resolve(process.cwd(), 'docs/csv_marzo');
     if (args.excel2) await etlInterior(conn, excel2Path, args.periodo);
     if (args.excel1) await etlCapital(conn, excel1Path, args.periodo);
     if (args.excel2) await etlPadronCapital(conn, excel2Path);
     if (args.excel2) await etlBecariosAnexoII(conn, excel2Path, args.periodo);
     await etlMarzo(conn, marzoDir, args.periodo);
+    await etlBeneficiariosCsvCapital(conn, csvDir, args.periodo);
     await logResumen(conn);
   } finally {
     await conn.end();

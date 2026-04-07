@@ -145,7 +145,7 @@ const RANKING_TOOLTIP: Record<RankingTipo, string> = {
   otros_recursos:
     "Suma de gas + limpieza + fumigación por dependencia. Gas: $11.570.000, Limpieza: $13.311.798, Fumigación: $2.600.000.",
   promedio_beneficiario:
-    "Con el prorrateo Teknofood (monto proporcional a beneficiarios), monto/benef. = presupuesto mensual total ÷ total de beneficiarios: es el mismo valor para todas las filas (costo unitario global del programa).",
+    "Monto total de la dependencia dividido la cantidad de beneficiarios (monto_dep / beneficiarios_dep).",
 };
 
 function totalRubroForRanking(tipo: RankingTipo, m: SummaryData["montos"] | undefined): number {
@@ -180,6 +180,7 @@ function ComedoresPageContent() {
   const [detailId, setDetailId] = useState<number | null>(null);
   const [detail, setDetail] = useState<ComedorDetailData | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const rankingFetchLimit = searchTerm.trim() ? 2000 : 50;
 
   useEffect(() => {
     fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/comedores/periodos`)
@@ -207,14 +208,14 @@ function ComedoresPageContent() {
   useEffect(() => {
     setLoadingRankings(true);
     fetch(
-      `${process.env.NEXT_PUBLIC_API_URL || ""}/api/comedores/rankings?periodo=${encodeURIComponent(periodo)}&tipo=${rankingTipo}&limit=50`
+      `${process.env.NEXT_PUBLIC_API_URL || ""}/api/comedores/rankings?periodo=${encodeURIComponent(periodo)}&tipo=${rankingTipo}&limit=${rankingFetchLimit}`
     )
       .then((r) => r.json())
       .then((j) => {
         if (j.success) setRankings(j.data ?? []);
       })
       .finally(() => setLoadingRankings(false));
-  }, [periodo, rankingTipo]);
+  }, [periodo, rankingTipo, rankingFetchLimit]);
 
   const rankingRows = useMemo(() => {
     const totalRubro = totalRubroForRanking(rankingTipo, summary?.montos);
@@ -225,7 +226,8 @@ function ComedoresPageContent() {
         const monto = Number(r.valor ?? 0);
         const pctRubro =
           rankingTipo !== "promedio_beneficiario" && totalRubro > 0 ? (monto / totalRubro) * 100 : null;
-        return { ...r, benef, monto, pctRubro };
+        const promBenef = benef > 0 ? monto / benef : null;
+        return { ...r, benef, monto, pctRubro, promBenef };
       })
       .filter((r) => {
         if (!normalizedSearch) return true;
@@ -519,7 +521,6 @@ function ComedoresPageContent() {
                   <button className="hover:text-slate-700" onClick={() => onSort("nombre")}>Dependencia</button>
                 </th>
                 <th className="pb-3 pr-2 sm:pr-4">Zona / Ámbito</th>
-                <th className="pb-3 pr-2 sm:pr-4 hidden sm:table-cell">Responsable</th>
                 <th className="pb-3 pr-2 sm:pr-4 text-right">
                   <span className="inline-flex items-center gap-1">
                     <button className="hover:text-slate-700" onClick={() => onSort("monto")}>Monto</button>
@@ -534,6 +535,9 @@ function ComedoresPageContent() {
                 <th className="pb-3 pr-2 sm:pr-4 text-right hidden md:table-cell">
                   % rubro
                 </th>
+                <th className="pb-3 pr-2 sm:pr-4 text-right hidden lg:table-cell">
+                  Monto prom./benef.
+                </th>
                 <th className="pb-3 pr-2 sm:pr-4 text-right">
                   <button className="hover:text-slate-700" onClick={() => onSort("benef")}>Benef.</button>
                 </th>
@@ -541,10 +545,10 @@ function ComedoresPageContent() {
             </thead>
             <tbody>
               {loadingRankings ? (
-                <tr><td colSpan={7} className="py-8 text-center text-slate-400">Cargando...</td></tr>
+                <tr><td colSpan={8} className="py-8 text-center text-slate-400">Cargando...</td></tr>
               ) : sinPromedioDatos ? (
                 <tr>
-                  <td colSpan={7} className="py-8 text-center text-slate-500 text-sm font-medium">
+                  <td colSpan={8} className="py-8 text-center text-slate-500 text-sm font-medium">
                     Sin datos de monto o beneficiarios en presupuesto (Teknofood) para calcular el promedio.
                   </td>
                 </tr>
@@ -568,12 +572,14 @@ function ComedoresPageContent() {
                     <td className="py-3 pr-2 sm:pr-4 font-mono text-slate-400">{i + 1}</td>
                     <td className="py-3 pr-2 sm:pr-4 font-bold text-slate-800 truncate max-w-[120px] sm:max-w-none">{r.nombre}</td>
                     <td className="py-3 pr-2 sm:pr-4 text-slate-600 truncate max-w-[80px] sm:max-w-none">{r.zona_nombre || r.ambito}</td>
-                    <td className="py-3 pr-2 sm:pr-4 text-slate-600 hidden sm:table-cell truncate max-w-[100px]">{r.responsable_nombre || "—"}</td>
                     <td className="py-3 pr-2 sm:pr-4 text-right font-black text-slate-800 whitespace-nowrap">
                       ${r.monto.toLocaleString("es-AR", { maximumFractionDigits: 2 })}
                     </td>
                     <td className="py-3 pr-2 sm:pr-4 text-right text-slate-600 whitespace-nowrap hidden md:table-cell">
                       {r.pctRubro != null ? `${r.pctRubro.toLocaleString("es-AR", { maximumFractionDigits: 1 })}%` : "—"}
+                    </td>
+                    <td className="py-3 pr-2 sm:pr-4 text-right text-slate-600 whitespace-nowrap hidden lg:table-cell">
+                      {r.promBenef != null ? `$${r.promBenef.toLocaleString("es-AR", { maximumFractionDigits: 2 })}` : "—"}
                     </td>
                     <td className="py-3 pr-2 sm:pr-4 text-right font-black text-slate-700 whitespace-nowrap">
                       {r.benef.toLocaleString()}

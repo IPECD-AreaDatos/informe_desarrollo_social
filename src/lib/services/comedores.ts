@@ -471,7 +471,7 @@ async function getRankings(params: {
   offset?: number;
 }): Promise<ComedoresRankingRow[]> {
   const { connection, close } = await getComedoresConnection();
-  const limitVal = Math.min(Math.max(0, params.limit ?? 50), 100);
+  const limitVal = Math.min(Math.max(0, params.limit ?? 50), 2000);
   const offsetVal = Math.max(0, params.offset ?? 0);
 
   try {
