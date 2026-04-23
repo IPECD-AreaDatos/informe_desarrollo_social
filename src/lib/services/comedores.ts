@@ -56,7 +56,12 @@ export interface ComedoresSummary {
     otros_fumigacion_cantidad: number;
   };
   comedores_por_zona_capital: { zona: string; cantidad: number }[];
-  comedores_por_interior: { departamento: string; localidad: string | null; cantidad: number }[];
+  comedores_por_interior: {
+    departamento: string;
+    localidad: string | null;
+    cantidad: number;
+    tipos?: { tipo: string; subtipo: string | null; cantidad: number }[];
+  }[];
   /** Conteos desde tipo/subtipo en COMEDOR (p. ej. ETL marzo por DEPENDENCIA) */
   comedores_por_tipo: { tipo: string; subtipo: string | null; cantidad: number }[];
 }
@@ -152,7 +157,14 @@ async function getSummaryByPeriodo(periodo: string): Promise<ComedoresSummary> {
   const { connection, close } = await getComedoresConnection();
   try {
     const [totalRows]: any = await connection.execute(
-      `SELECT COUNT(DISTINCT c.comedor_id) AS total FROM COMEDOR c`
+      `SELECT COUNT(
+         DISTINCT CASE
+           WHEN NULLIF(TRIM(c.numero_oficial), '') IS NOT NULL
+             THEN CONCAT('NO:', TRIM(c.numero_oficial))
+           ELSE CONCAT('NM:', UPPER(TRIM(c.nombre)), '|Z:', c.zona_id)
+         END
+       ) AS total
+       FROM COMEDOR c`
     );
     const [porAmbito]: any = await connection.execute(
       `SELECT z.ambito AS ambito, COUNT(DISTINCT c.comedor_id) AS cantidad
@@ -316,6 +328,33 @@ async function getSummaryByPeriodo(periodo: string): Promise<ComedoresSummary> {
        WHERE z.ambito = 'INTERIOR'
        GROUP BY z.departamento, z.localidad ORDER BY cantidad DESC LIMIT 15`
     );
+    const [interiorTiposRows]: any = await connection.execute(
+      `SELECT
+         z.departamento AS departamento,
+         z.localidad AS localidad,
+         COALESCE(tc.nombre, 'Sin clasificar') AS tipo,
+         st.nombre AS subtipo,
+         COUNT(DISTINCT c.comedor_id) AS cantidad
+       FROM COMEDOR c
+       JOIN ZONA z ON c.zona_id = z.zona_id
+       LEFT JOIN TIPO_COMEDOR tc ON c.tipo_id = tc.tipo_id
+       LEFT JOIN SUBTIPO_COMEDOR st ON c.subtipo_id = st.subtipo_id
+       WHERE z.ambito = 'INTERIOR'
+       GROUP BY z.departamento, z.localidad, tc.tipo_id, tc.nombre, st.subtipo_id, st.nombre`
+    );
+    const tiposPorInterior = new Map<string, { tipo: string; subtipo: string | null; cantidad: number }[]>();
+    for (const row of interiorTiposRows as any[]) {
+      const depto = String(row.departamento ?? '');
+      const loc = row.localidad != null ? String(row.localidad) : '';
+      const key = `${depto}||${loc}`;
+      const tiposActuales = tiposPorInterior.get(key) ?? [];
+      tiposActuales.push({
+        tipo: String(row.tipo ?? 'Sin clasificar'),
+        subtipo: row.subtipo != null && String(row.subtipo).trim() !== '' ? String(row.subtipo) : null,
+        cantidad: Number(row.cantidad ?? 0),
+      });
+      tiposPorInterior.set(key, tiposActuales);
+    }
     let porTipo: { tipo: string; subtipo: string | null; cantidad: number }[] = [];
     try {
       const [pt]: any = await connection.execute(
@@ -455,6 +494,9 @@ async function getSummaryByPeriodo(periodo: string): Promise<ComedoresSummary> {
         departamento: r.departamento || '',
         localidad: r.localidad ?? null,
         cantidad: r.cantidad,
+        tipos: (
+          tiposPorInterior.get(`${String(r.departamento ?? '')}||${r.localidad != null ? String(r.localidad) : ''}`) ?? []
+        ).sort((a, b) => b.cantidad - a.cantidad),
       })),
       comedores_por_tipo: porTipo,
     };
@@ -517,18 +559,22 @@ async function getRankings(params: {
            LEFT JOIN ZONA z ON z.zona_id = c.zona_id
            WHERE pd.rubro = 'monto_invertido'
              AND (pd.subrubro <=> 'teknofood' OR pd.subrubro IS NULL OR TRIM(COALESCE(pd.subrubro, '')) = '')
+             AND (? IS NULL OR COALESCE(z.ambito, pd.ambito) = ?)
            GROUP BY COALESCE(pd.comedor_id, c.comedor_id), COALESCE(c.nombre, pd.dependencia_nombre), z.nombre, COALESCE(z.ambito, pd.ambito), c.responsable_nombre
            HAVING valor > 0 OR beneficiarios > 0
            ORDER BY valor DESC`,
-          []
+          [params.ambito ?? null, params.ambito ?? null]
         );
         rows = r as any[];
       } catch (e: any) {
         if (e?.code !== 'ER_NO_SUCH_TABLE') throw e;
         rows = [];
       }
+      const hasInterior = (rows as any[]).some((row: any) => String(row.ambito || '').toUpperCase() === 'INTERIOR');
+      const hasCapital = (rows as any[]).some((row: any) => String(row.ambito || '').toUpperCase() === 'CAPITAL');
+      const ambitoSesgado = rows.length > 0 && hasCapital && !hasInterior;
       const sinMonto = (rows as any[]).every((row: any) => Number(row.valor ?? 0) <= 0);
-      if (sinMonto && rows.length > 0) {
+      if ((sinMonto && rows.length > 0) || ambitoSesgado || rows.length === 0) {
         let totalMontoResumen = 0;
         try {
           const [tr]: any = await connection.execute(
@@ -544,11 +590,38 @@ async function getRankings(params: {
         } catch (e: any) {
           if (e?.code !== 'ER_NO_SUCH_TABLE') throw e;
         }
-        const benefTotal = (rows as any[]).reduce((s, row) => s + Number(row.beneficiarios ?? 0), 0);
-        if (totalMontoResumen > 0 && benefTotal > 0) {
-          rows = (rows as any[]).map((row: any) => ({
+        let rowsRacion: any[] = [];
+        try {
+          const [rr]: any = await connection.execute(
+            `SELECT
+               c.comedor_id,
+               c.nombre,
+               z.nombre AS zona_nombre,
+               z.ambito AS ambito,
+               c.responsable_nombre,
+               COALESCE(SUM(r.cantidad_beneficiarios), 0) AS beneficiarios
+             FROM RACION r
+             INNER JOIN COMEDOR c ON c.comedor_id = r.comedor_id
+             INNER JOIN ZONA z ON z.zona_id = c.zona_id
+             WHERE r.plan_ref <=> ?
+               AND (? IS NULL OR z.ambito = ?)
+             GROUP BY c.comedor_id, c.nombre, z.nombre, z.ambito, c.responsable_nombre
+             HAVING beneficiarios > 0
+             ORDER BY beneficiarios DESC`,
+            [params.periodo || null, params.ambito ?? null, params.ambito ?? null]
+          );
+          rowsRacion = rr as any[];
+        } catch (e: any) {
+          if (e?.code !== 'ER_NO_SUCH_TABLE') throw e;
+          rowsRacion = [];
+        }
+        const baseRows = rowsRacion.length > 0 ? rowsRacion : rows;
+        const benefTotal = (baseRows as any[]).reduce((s, row) => s + Number(row.beneficiarios ?? 0), 0);
+        if (totalMontoResumen > 0 && benefTotal > 0 && baseRows.length > 0) {
+          rows = (baseRows as any[]).map((row: any) => ({
             ...row,
             valor: (totalMontoResumen * Number(row.beneficiarios ?? 0)) / benefTotal,
+            beneficiarios: Number(row.beneficiarios ?? 0),
           }));
           rows.sort((a: any, b: any) => Number(b.valor) - Number(a.valor));
         }
@@ -666,6 +739,16 @@ async function getRankings(params: {
       const rubro = params.tipo === 'promedio_beneficiario' ? 'monto_invertido' : params.tipo;
       let rows: any[] = [];
       try {
+        const whereClause =
+          params.tipo === 'promedio_beneficiario'
+            ? 'WHERE (? IS NULL OR COALESCE(z.ambito, pd.ambito) = ?)'
+            : 'WHERE pd.rubro = ? AND (? IS NULL OR COALESCE(z.ambito, pd.ambito) = ?)';
+        const beneficiariosExpr =
+          params.tipo === 'promedio_beneficiario' ? 'COALESCE(MAX(pd.beneficiarios), 0)' : 'COALESCE(SUM(pd.beneficiarios), 0)';
+        const orderExpr =
+          params.tipo === 'promedio_beneficiario'
+            ? 'CASE WHEN MAX(pd.beneficiarios) > 0 THEN SUM(pd.monto)/MAX(pd.beneficiarios) ELSE 0 END'
+            : 'valor';
         const [r]: any = await connection.execute(
           `SELECT
              COALESCE(pd.comedor_id, c.comedor_id) AS comedor_id,
@@ -674,16 +757,18 @@ async function getRankings(params: {
              COALESCE(z.ambito, pd.ambito) AS ambito,
              c.responsable_nombre,
              COALESCE(SUM(pd.monto), 0) AS valor,
-             COALESCE(SUM(pd.beneficiarios), 0) AS beneficiarios,
+             ${beneficiariosExpr} AS beneficiarios,
              COALESCE(SUM(pd.cantidad), 0) AS cantidad
            FROM PRESUPUESTO_DEPENDENCIA pd
            LEFT JOIN COMEDOR c ON c.comedor_id = pd.comedor_id
            LEFT JOIN ZONA z ON z.zona_id = c.zona_id
-           WHERE pd.rubro = ?
+           ${whereClause}
            GROUP BY COALESCE(pd.comedor_id, c.comedor_id), COALESCE(c.nombre, pd.dependencia_nombre), z.nombre, COALESCE(z.ambito, pd.ambito), c.responsable_nombre
-           ORDER BY ${params.tipo === 'promedio_beneficiario' ? 'CASE WHEN SUM(pd.beneficiarios) > 0 THEN SUM(pd.monto)/SUM(pd.beneficiarios) ELSE 0 END' : 'valor'} DESC
+           ORDER BY ${orderExpr} DESC
            LIMIT ${limitVal} OFFSET ${offsetVal}`,
-          [rubro]
+          params.tipo === 'promedio_beneficiario'
+            ? [params.ambito ?? null, params.ambito ?? null]
+            : [rubro, params.ambito ?? null, params.ambito ?? null]
         );
         rows = r as any[];
       } catch (error: any) {
@@ -724,25 +809,21 @@ async function getRankings(params: {
              FROM (
                SELECT
                  COALESCE(c.comedor_id, 0) AS comedor_id,
-                 COALESCE(NULLIF(TRIM(c.nombre), ''), NULLIF(TRIM(bl.comedor_nombre), ''), 'Sin comedor') AS nombre,
+                COALESCE(NULLIF(TRIM(c.nombre), ''), 'Dependencia sin asociación') AS nombre,
                  z.nombre AS zona_nombre,
                  COALESCE(z.ambito, bl.ambito, 'CAPITAL') AS ambito,
                  c.responsable_nombre,
                  COUNT(*) AS n_personas
                FROM BECARIO_LINEA bl
-               LEFT JOIN COMEDOR c ON (
-                 (TRIM(COALESCE(bl.numero_oficial,'')) <> '' AND c.numero_oficial IS NOT NULL
-                   AND TRIM(c.numero_oficial) = TRIM(bl.numero_oficial))
-                 OR (
-                   TRIM(COALESCE(bl.comedor_nombre,'')) <> ''
-                   AND TRIM(LOWER(c.nombre)) = TRIM(LOWER(bl.comedor_nombre))
-                 )
-               )
+              LEFT JOIN COMEDOR c ON (
+                TRIM(COALESCE(bl.numero_oficial,'')) <> '' AND c.numero_oficial IS NOT NULL
+                AND TRIM(c.numero_oficial) = TRIM(bl.numero_oficial)
+              )
                LEFT JOIN ZONA z ON z.zona_id = c.zona_id
                WHERE bl.tipo_linea = 'PERSONA'
                  AND (TRIM(COALESCE(bl.apellido,'')) <> '' OR TRIM(COALESCE(bl.nombre,'')) <> '')
                GROUP BY COALESCE(c.comedor_id, 0),
-                        COALESCE(NULLIF(TRIM(c.nombre), ''), NULLIF(TRIM(bl.comedor_nombre), ''), 'Sin comedor'),
+                       COALESCE(NULLIF(TRIM(c.nombre), ''), 'Dependencia sin asociación'),
                         z.nombre,
                         COALESCE(z.ambito, bl.ambito, 'CAPITAL'),
                         c.responsable_nombre

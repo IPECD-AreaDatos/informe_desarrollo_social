@@ -8,7 +8,6 @@ import {
   Sparkles,
   Carrot,
   MapPin,
-  BarChart3,
   ChevronDown,
   X,
   Phone,
@@ -66,7 +65,12 @@ interface SummaryData {
     otros_gas_cantidad: number;
   };
   comedores_por_zona_capital: { zona: string; cantidad: number }[];
-  comedores_por_interior: { departamento: string; localidad: string | null; cantidad: number }[];
+  comedores_por_interior: {
+    departamento: string;
+    localidad: string | null;
+    cantidad: number;
+    tipos?: { tipo: string; subtipo: string | null; cantidad: number }[];
+  }[];
   comedores_por_tipo?: { tipo: string; subtipo: string | null; cantidad: number }[];
 }
 
@@ -82,6 +86,7 @@ interface RankingRow {
 }
 
 type SortKey = "nombre" | "monto" | "benef";
+type RankingAmbitoFilter = "TODOS" | "CAPITAL" | "INTERIOR";
 
 interface ComedorDetailData {
   comedor_id: number;
@@ -143,9 +148,9 @@ const RANKING_TOOLTIP: Record<RankingTipo, string> = {
   carnes:
     "Monto = (kg_semanal × precio_tipo × 4,33) escalado al total de $137.123.110,80. Precios: vacuna $13.380/kg, pollo $7.679/kg, cerdo $8.420/kg.",
   otros_recursos:
-    "Suma de gas + limpieza + fumigación por dependencia. Gas: $11.570.000, Limpieza: $13.311.798, Fumigación: $2.600.000.",
+    "Suma de gas + limpieza + fumigación por dependencia. Frecuencia: limpieza cada 2 meses (bimestral) y fumigación cada 3 meses (trimestral). Gas: $11.570.000, Limpieza: $13.311.798, Fumigación: $2.600.000.",
   promedio_beneficiario:
-    "Monto total de la dependencia dividido la cantidad de beneficiarios (monto_dep / beneficiarios_dep).",
+    "Promedio = (suma de todos los rubros de la dependencia) / cantidad de beneficiarios de la dependencia.",
 };
 
 function totalRubroForRanking(tipo: RankingTipo, m: SummaryData["montos"] | undefined): number {
@@ -172,6 +177,7 @@ function ComedoresPageContent() {
   const [summary, setSummary] = useState<SummaryData | null>(null);
   const [rankings, setRankings] = useState<RankingRow[]>([]);
   const [rankingTipo, setRankingTipo] = useState<RankingTipo>("raciones");
+  const [rankingAmbito, setRankingAmbito] = useState<RankingAmbitoFilter>("TODOS");
   const [searchTerm, setSearchTerm] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("monto");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
@@ -207,32 +213,42 @@ function ComedoresPageContent() {
 
   useEffect(() => {
     setLoadingRankings(true);
+    const ambitoParam = rankingAmbito === "TODOS" ? "" : `&ambito=${rankingAmbito}`;
     fetch(
-      `${process.env.NEXT_PUBLIC_API_URL || ""}/api/comedores/rankings?periodo=${encodeURIComponent(periodo)}&tipo=${rankingTipo}&limit=${rankingFetchLimit}`
+      `${process.env.NEXT_PUBLIC_API_URL || ""}/api/comedores/rankings?periodo=${encodeURIComponent(periodo)}&tipo=${rankingTipo}&limit=${rankingFetchLimit}${ambitoParam}`
     )
       .then((r) => r.json())
       .then((j) => {
         if (j.success) setRankings(j.data ?? []);
       })
       .finally(() => setLoadingRankings(false));
-  }, [periodo, rankingTipo, rankingFetchLimit]);
+  }, [periodo, rankingTipo, rankingAmbito, rankingFetchLimit]);
 
   const rankingRows = useMemo(() => {
-    const totalRubro = totalRubroForRanking(rankingTipo, summary?.montos);
+    const totalMontoInvertido = summary?.montos?.monto_invertido_total ?? 0;
     const normalizedSearch = searchTerm.trim().toLowerCase();
     const rows = rankings
       .map((r) => {
         const benef = Number(r.beneficiarios ?? 0);
         const monto = Number(r.valor ?? 0);
-        const pctRubro =
-          rankingTipo !== "promedio_beneficiario" && totalRubro > 0 ? (monto / totalRubro) * 100 : null;
+        const pctParticipacionRelativa =
+          rankingTipo !== "promedio_beneficiario" && totalMontoInvertido > 0
+            ? (monto / totalMontoInvertido) * 100
+            : null;
         const promBenef = benef > 0 ? monto / benef : null;
-        return { ...r, benef, monto, pctRubro, promBenef };
+        return { ...r, benef, monto, pctParticipacionRelativa, promBenef };
       })
       .filter((r) => {
         if (!normalizedSearch) return true;
         const bag = `${r.nombre} ${r.responsable_nombre || ""} ${r.zona_nombre || ""} ${r.ambito}`.toLowerCase();
         return bag.includes(normalizedSearch);
+      })
+      .filter((r) => {
+        const montoPositivo = Number(r.monto ?? 0) > 0;
+        const benefPositivo = Number(r.benef ?? 0) > 0;
+        const pctPositivo = Number(r.pctParticipacionRelativa ?? 0) > 0;
+        const promPositivo = Number(r.promBenef ?? 0) > 0;
+        return montoPositivo || benefPositivo || pctPositivo || promPositivo;
       });
 
     rows.sort((a, b) => {
@@ -255,7 +271,7 @@ function ComedoresPageContent() {
   const presupuestoFvCantidades = useMemo(() => {
     const v = summary?.montos?.refrigerio_verduras_kg ?? 0;
     const f = summary?.montos?.refrigerio_frutas_unidades ?? 0;
-    return `${v.toLocaleString("es-AR", { maximumFractionDigits: 1 })} kg verd. · ${f.toLocaleString("es-AR", { maximumFractionDigits: 0 })} u. frutas`;
+    return `${v.toLocaleString("es-AR", { maximumFractionDigits: 0 })} kg verd.\n${f.toLocaleString("es-AR", { maximumFractionDigits: 0 })} u. de frutas`;
   }, [summary]);
 
   const otrosRecursosCantidades = useMemo(() => {
@@ -263,7 +279,21 @@ function ComedoresPageContent() {
     if (!m) return "";
     const l = m.otros_limpieza_cantidad ?? 0;
     const g = m.otros_gas_cantidad ?? 0;
-    return `Limpieza: ${l.toLocaleString("es-AR")} u. · Gas: ${g.toLocaleString("es-AR")} garrafas`;
+    return `Limpieza: ${l.toLocaleString("es-AR")} u.\nGas: ${g.toLocaleString("es-AR")} garrafas`;
+  }, [summary]);
+
+  const totalDependenciasTooltip = useMemo(() => {
+    const rows = summary?.comedores_por_tipo ?? [];
+    if (!rows.length) {
+      const total = summary?.total_comedores ?? 0;
+      return `Total: ${total.toLocaleString("es-AR")} dependencias. Sin desglose por tipo disponible.`;
+    }
+    const total = summary?.total_comedores ?? 0;
+    const detalle = rows
+      .slice(0, 8)
+      .map((r) => `${r.subtipo ? `${r.tipo} - ${r.subtipo}` : r.tipo}: ${r.cantidad.toLocaleString("es-AR")}`)
+      .join(" | ");
+    return `Total: ${total.toLocaleString("es-AR")} dependencias. Tipos: ${detalle}`;
   }, [summary]);
 
   const onSort = (key: SortKey) => {
@@ -273,6 +303,13 @@ function ComedoresPageContent() {
     }
     setSortKey(key);
     setSortDir(key === "nombre" ? "asc" : "desc");
+  };
+
+  const formatPeriodoLabel = (label: string) => {
+    if (label.trim().toLowerCase() === "plan verano 2026") {
+      return "Plan Verano 2026 (enero y febrero)";
+    }
+    return label;
   };
 
   useEffect(() => {
@@ -316,7 +353,7 @@ function ComedoresPageContent() {
             className="appearance-none bg-white px-4 py-2.5 pr-10 rounded-xl border border-slate-200 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-green-500/30 focus:border-green-500"
           >
             {periodos.length ? periodos.map((p) => (
-              <option key={p.valor} value={p.valor}>{p.etiqueta || "Todos"}</option>
+              <option key={p.valor} value={p.valor}>{formatPeriodoLabel(p.etiqueta || "Todos")}</option>
             )) : (
               <option value="">Cargando...</option>
             )}
@@ -332,11 +369,11 @@ function ComedoresPageContent() {
           value={summary?.total_comedores?.toLocaleString() ?? "0"}
           icon={UtensilsCrossed}
           loading={loadingSummary}
-          description="Incluye merenderos, comedores, CDI y dependencia del Ministerio de Justicia."
+          description={totalDependenciasTooltip}
         />
         <KPICard
-          label="Monto invertido"
-          value={`$${(summary?.montos?.monto_invertido_total ?? 0).toLocaleString("es-AR", { maximumFractionDigits: 2 })}`}
+          label="Costo de Teknofood"
+          value={`$${(summary?.montos?.monto_invertido_total ?? 0).toLocaleString("es-AR", { maximumFractionDigits: 0 })}`}
           secondaryValue={(summary?.montos?.monto_invertido_cantidad ?? 0).toLocaleString("es-AR", { maximumFractionDigits: 0 })}
           secondaryLabel="Cantidad"
           icon={HandCoins}
@@ -346,7 +383,7 @@ function ComedoresPageContent() {
         />
         <KPICard
           label="Becados"
-          value={`$${(summary?.montos?.becados_monto ?? 0).toLocaleString("es-AR", { maximumFractionDigits: 2 })}`}
+          value={`$${(summary?.montos?.becados_monto ?? 0).toLocaleString("es-AR", { maximumFractionDigits: 0 })}`}
           secondaryValue={(summary?.montos?.becados_cantidad ?? 0).toLocaleString("es-AR", { maximumFractionDigits: 0 })}
           secondaryLabel="Cantidad"
           noteText={
@@ -361,9 +398,9 @@ function ComedoresPageContent() {
         />
         <KPICard
           label="Refrigerio / Comida"
-          value={`$${(summary?.montos?.refrigerio_comida_monto ?? 0).toLocaleString("es-AR", { maximumFractionDigits: 2 })}`}
+          value={`$${(summary?.montos?.refrigerio_comida_monto ?? 0).toLocaleString("es-AR", { maximumFractionDigits: 0 })}`}
           secondaryValue={presupuestoFvCantidades}
-          secondaryLabel="Cantidades (presup.)"
+          secondaryLabel="Cantidades"
           icon={ClipboardList}
           loading={loadingSummary}
           color="#f97316"
@@ -371,7 +408,7 @@ function ComedoresPageContent() {
         />
         <KPICard
           label="Carnes"
-          value={`$${(summary?.montos?.carnes_monto ?? 0).toLocaleString("es-AR", { maximumFractionDigits: 2 })}`}
+          value={`$${(summary?.montos?.carnes_monto ?? 0).toLocaleString("es-AR", { maximumFractionDigits: 0 })}`}
           secondaryValue={(summary?.montos?.carnes_cantidad ?? 0).toLocaleString("es-AR", { maximumFractionDigits: 0 })}
           secondaryLabel="Cantidad (kg)"
           icon={Beef}
@@ -381,43 +418,18 @@ function ComedoresPageContent() {
         />
         <KPICard
           label="Otros recursos"
-          value={`$${(summary?.montos?.otros_recursos_monto ?? 0).toLocaleString("es-AR", { maximumFractionDigits: 2 })}`}
+          value={`$${(summary?.montos?.otros_recursos_monto ?? 0).toLocaleString("es-AR", { maximumFractionDigits: 0 })}`}
           secondaryValue={otrosRecursosCantidades}
-          secondaryLabel="Limpieza y gas (presup.)"
+          secondaryLabel="Cantidades"
           icon={Sparkles}
           loading={loadingSummary}
           color="#7c3aed"
-          description="Monto: limpieza + gas + fumigación. Cantidades mostradas: solo artículos de limpieza y garrafas."
+          description="Monto: limpieza + gas + fumigación. Frecuencia: limpieza cada 2 meses (bimestral) y fumigación cada 3 meses (trimestral). Cantidades mostradas: solo artículos de limpieza y garrafas."
         />
       </div>
 
-      {/* Capital vs Interior breakdown */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 min-w-0">
-        <div className="bg-white p-6 sm:p-8 lg:p-10 rounded-2xl sm:rounded-[40px] border border-slate-100 shadow-sm min-w-0">
-          <h3 className="text-lg sm:text-xl font-black text-slate-800 mb-4 sm:mb-6 flex items-center gap-2 border-b border-slate-100 pb-4">
-            <BarChart3 className="text-green-600 shrink-0" />
-            Dependencias por zona (Capital)
-          </h3>
-          <div className="space-y-3">
-            {summary?.comedores_por_zona_capital?.map((z, i) => {
-              const max = Math.max(...(summary.comedores_por_zona_capital?.map((x) => x.cantidad) ?? [1]), 1);
-              const pct = (z.cantidad / max) * 100;
-              return (
-                <div key={i} className="flex justify-between items-center gap-2 sm:gap-4 min-w-0">
-                  <span className="text-xs sm:text-sm font-bold text-slate-600 w-28 sm:w-40 truncate">{z.zona}</span>
-                  <div className="flex-1 min-w-0 h-5 sm:h-6 bg-slate-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-green-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
-                  </div>
-                  <span className="text-xs sm:text-sm font-black text-slate-800 w-8 sm:w-12 text-right shrink-0">{z.cantidad}</span>
-                </div>
-              );
-            })}
-            {!summary?.comedores_por_zona_capital?.length && !loadingSummary && (
-              <p className="text-slate-400 text-sm">Sin datos</p>
-            )}
-          </div>
-        </div>
-
+      {/* Interior breakdown */}
+      <div className="grid grid-cols-1 min-w-0">
         <div className="bg-white p-6 sm:p-8 lg:p-10 rounded-2xl sm:rounded-[40px] border border-slate-100 shadow-sm min-w-0">
           <h3 className="text-lg sm:text-xl font-black text-slate-800 mb-4 sm:mb-6 flex items-center gap-2 border-b border-slate-100 pb-4">
             <MapPin className="text-green-600 shrink-0" />
@@ -425,16 +437,51 @@ function ComedoresPageContent() {
           </h3>
           <div className="space-y-3 max-h-64 overflow-y-auto min-w-0">
             {summary?.comedores_por_interior?.map((d, i) => {
-              const max = Math.max(...(summary.comedores_por_interior?.map((x) => x.cantidad) ?? [1]), 1);
-              const pct = (d.cantidad / max) * 100;
-              const label = [d.departamento, d.localidad].filter(Boolean).join(" / ") || "Sin nombre";
+              const departamentoLimpio = String(d.departamento ?? "")
+                .replace(/^dto\.?\s*de\s+/i, "")
+                .replace(/^departamento\s*de\s+/i, "")
+                .trim();
+              const totalInterior = Math.max(
+                (summary.comedores_por_interior ?? []).reduce((acc, x) => acc + Number(x.cantidad ?? 0), 0),
+                1
+              );
+              const pct = (d.cantidad / totalInterior) * 100;
+              const label = [departamentoLimpio, d.localidad].filter(Boolean).join(" / ") || "Sin nombre";
+              const tiposTooltip = (d.tipos ?? []).slice(0, 8);
               return (
                 <div key={i} className="flex justify-between items-center gap-2 sm:gap-4 min-w-0">
-                  <span className="text-xs sm:text-sm font-bold text-slate-600 flex-1 min-w-0 truncate" title={label}>{label}</span>
-                  <div className="w-16 sm:w-24 h-5 bg-slate-100 rounded-full overflow-hidden shrink-0">
-                    <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${pct}%` }} />
+                  <span className="text-xs sm:text-sm font-bold text-slate-600 flex-1 min-w-0 truncate">{label}</span>
+                  <div className="shrink-0 relative group">
+                    <div className="w-24 sm:w-32 h-5 bg-slate-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-blue-500 rounded-full transition-all flex items-center justify-end pr-1"
+                        style={{ width: `${pct}%` }}
+                      >
+                        {pct >= 18 && (
+                          <span className="text-[10px] font-black text-white leading-none">
+                            {pct.toLocaleString("es-AR", { maximumFractionDigits: 0 })}%
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 top-full mt-1 w-[300px] max-w-[90vw] rounded-lg bg-slate-800 text-white text-[11px] leading-snug font-normal p-2.5 opacity-0 group-hover:opacity-100 transition-opacity z-50 shadow-lg">
+                      <p className="font-bold">{label}</p>
+                      <p className="mt-1">
+                        Dependencias: {d.cantidad.toLocaleString("es-AR")} ({pct.toLocaleString("es-AR", { maximumFractionDigits: 0 })}%)
+                      </p>
+                      {tiposTooltip.length > 0 && (
+                        <p className="mt-1">
+                          Tipos:{" "}
+                          {tiposTooltip
+                            .map((t) => `${t.subtipo ? `${t.tipo} - ${t.subtipo}` : t.tipo}: ${t.cantidad}`)
+                            .join(" | ")}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                  <span className="text-xs sm:text-sm font-black text-slate-800 w-8 sm:w-10 text-right shrink-0">{d.cantidad}</span>
+                  <span className="text-xs sm:text-sm font-black text-slate-800 w-16 sm:w-20 text-right shrink-0">
+                    {pct.toLocaleString("es-AR", { maximumFractionDigits: 0 })}%
+                  </span>
                 </div>
               );
             })}
@@ -452,8 +499,8 @@ function ComedoresPageContent() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
           <div className="p-4 rounded-xl bg-slate-50">
             <p className="text-xs uppercase font-black tracking-wider text-slate-500 mb-2">Capital / Interior</p>
-            <p className="text-slate-700 font-bold">Capital: {(summary?.por_ambito?.find((x) => x.ambito === "CAPITAL")?.cantidad ?? 0).toLocaleString()}</p>
-            <p className="text-slate-700 font-bold">Interior: {(summary?.por_ambito?.find((x) => x.ambito === "INTERIOR")?.cantidad ?? 0).toLocaleString()}</p>
+            <p className="text-slate-700 font-bold">Capital: 212</p>
+            <p className="text-slate-700 font-bold">Interior: 170</p>
           </div>
           <div className="p-4 rounded-xl bg-slate-50">
             <p className="text-xs uppercase font-black tracking-wider text-slate-500 mb-2">Cantidad de zonas/localidades</p>
@@ -499,6 +546,22 @@ function ComedoresPageContent() {
             </button>
           ))}
         </div>
+        <div className="flex flex-wrap gap-2 mb-4">
+          {(["TODOS", "CAPITAL", "INTERIOR"] as const).map((amb) => (
+            <button
+              key={amb}
+              onClick={() => setRankingAmbito(amb)}
+              className={clsx(
+                "px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
+                rankingAmbito === amb
+                  ? "bg-slate-700 text-white"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              )}
+            >
+              {amb === "TODOS" ? "Todos" : amb === "CAPITAL" ? "Capital" : "Interior"}
+            </button>
+          ))}
+        </div>
         <p className="text-[11px] text-slate-400 mb-3 sm:mb-4 flex items-start gap-1.5 leading-relaxed">
           <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
           <span>{RANKING_TOOLTIP[rankingTipo]}</span>
@@ -533,7 +596,7 @@ function ComedoresPageContent() {
                   </span>
                 </th>
                 <th className="pb-3 pr-2 sm:pr-4 text-right hidden md:table-cell">
-                  % rubro
+                  <span title="Participación sobre el total de monto invertido">Participación relativa</span>
                 </th>
                 <th className="pb-3 pr-2 sm:pr-4 text-right hidden lg:table-cell">
                   Monto prom./benef.
@@ -550,6 +613,12 @@ function ComedoresPageContent() {
                 <tr>
                   <td colSpan={8} className="py-8 text-center text-slate-500 text-sm font-medium">
                     Sin datos de monto o beneficiarios en presupuesto (Teknofood) para calcular el promedio.
+                  </td>
+                </tr>
+              ) : !rankingRows.length ? (
+                <tr>
+                  <td colSpan={8} className="py-8 text-center text-slate-500 text-sm font-medium">
+                    Sin datos con monto o beneficiarios para mostrar.
                   </td>
                 </tr>
               ) : (
@@ -573,13 +642,15 @@ function ComedoresPageContent() {
                     <td className="py-3 pr-2 sm:pr-4 font-bold text-slate-800 truncate max-w-[120px] sm:max-w-none">{r.nombre}</td>
                     <td className="py-3 pr-2 sm:pr-4 text-slate-600 truncate max-w-[80px] sm:max-w-none">{r.zona_nombre || r.ambito}</td>
                     <td className="py-3 pr-2 sm:pr-4 text-right font-black text-slate-800 whitespace-nowrap">
-                      ${r.monto.toLocaleString("es-AR", { maximumFractionDigits: 2 })}
+                      ${r.monto.toLocaleString("es-AR", { maximumFractionDigits: 0 })}
                     </td>
                     <td className="py-3 pr-2 sm:pr-4 text-right text-slate-600 whitespace-nowrap hidden md:table-cell">
-                      {r.pctRubro != null ? `${r.pctRubro.toLocaleString("es-AR", { maximumFractionDigits: 1 })}%` : "—"}
+                      {r.pctParticipacionRelativa != null
+                        ? `${r.pctParticipacionRelativa.toLocaleString("es-AR", { maximumFractionDigits: 0 })}%`
+                        : "—"}
                     </td>
                     <td className="py-3 pr-2 sm:pr-4 text-right text-slate-600 whitespace-nowrap hidden lg:table-cell">
-                      {r.promBenef != null ? `$${r.promBenef.toLocaleString("es-AR", { maximumFractionDigits: 2 })}` : "—"}
+                      {r.promBenef != null ? `$${r.promBenef.toLocaleString("es-AR", { maximumFractionDigits: 0 })}` : "—"}
                     </td>
                     <td className="py-3 pr-2 sm:pr-4 text-right font-black text-slate-700 whitespace-nowrap">
                       {r.benef.toLocaleString()}
@@ -705,7 +776,7 @@ function ComedoresPageContent() {
                                     ${row.monto.toLocaleString("es-AR", { maximumFractionDigits: 0 })}
                                   </td>
                                   <td className="py-1.5 text-right text-slate-600">
-                                    {row.cantidad.toLocaleString("es-AR", { maximumFractionDigits: 1 })}
+                                    {row.cantidad.toLocaleString("es-AR", { maximumFractionDigits: 0 })}
                                     {row.unidad ? ` ${row.unidad}` : ""}
                                   </td>
                                 </tr>
@@ -717,7 +788,7 @@ function ComedoresPageContent() {
                     )}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
                       <div className="p-3 bg-violet-50 rounded-xl sm:col-span-2">
-                        <span className="font-bold text-violet-800">Limpieza</span>
+                        <span className="font-bold text-violet-800">Limpieza (entrega bimestral)</span>
                         <ul className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-violet-900">
                           {Object.entries(detail.recursos.limpieza).filter(([, v]) => v > 0).map(([k, v]) => {
                             const label = k.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
@@ -725,11 +796,11 @@ function ComedoresPageContent() {
                           })}
                         </ul>
                         {Object.values(detail.recursos.limpieza).every((v) => v === 0) && (
-                          <p className="mt-1 text-violet-700">0 un. total</p>
+                          <p className="mt-1 text-xs text-violet-700">Sin cantidades cargadas para este comedor en el periodo.</p>
                         )}
                       </div>
                       <div className="p-3 bg-emerald-50 rounded-xl sm:col-span-2">
-                        <span className="font-bold text-emerald-800">Frutas, verduras y carnes (kg / u.)</span>
+                        <span className="font-bold text-emerald-800">Frutas, verduras (u.) y carnes (kg)</span>
                         {(() => {
                           const d = detail.recursos.frescos_desglose;
                           const kgVer =
@@ -742,67 +813,98 @@ function ComedoresPageContent() {
                             (d?.carne_vacuna_kg ?? 0) + (d?.pollo_kg ?? 0) + (d?.cerdo_kg ?? 0);
                           const frut = d?.frutas_unidades ?? 0;
                           const tieneAny = kgVer > 0 || kgCar > 0 || frut > 0;
+                          const resumenPartes = [
+                            kgVer > 0
+                              ? `Verduras: ${kgVer.toLocaleString("es-AR", { maximumFractionDigits: 0 })} kg`
+                              : null,
+                            kgCar > 0
+                              ? `Carnes: ${kgCar.toLocaleString("es-AR", { maximumFractionDigits: 0 })} kg`
+                              : null,
+                            frut > 0
+                              ? `Frutas: ${frut.toLocaleString("es-AR", { maximumFractionDigits: 0 })} u.`
+                              : null,
+                          ].filter(Boolean) as string[];
+                          const verdurasRows = d
+                            ? (["cebolla_kg", "zanahoria_kg", "zapallo_kg", "papa_kg", "acelga_kg"] as const)
+                                .map((k) => ({ k, v: Number(d[k] ?? 0) }))
+                                .filter((row) => row.v > 0)
+                            : [];
+                          const carnesRows = d
+                            ? (["carne_vacuna_kg", "pollo_kg", "cerdo_kg"] as const)
+                                .map((k) => ({ k, v: Number(d[k] ?? 0) }))
+                                .filter((row) => row.v > 0)
+                            : [];
                           return (
                             <div className="mt-2 space-y-2 text-emerald-900 text-sm">
-                              <p className="font-semibold text-emerald-950">
-                                Verduras: {kgVer.toLocaleString("es-AR", { maximumFractionDigits: 1 })} kg · Carnes:{" "}
-                                {kgCar.toLocaleString("es-AR", { maximumFractionDigits: 1 })} kg · Frutas:{" "}
-                                {frut.toLocaleString("es-AR", { maximumFractionDigits: 0 })} u.
-                              </p>
+                              {resumenPartes.length > 0 && (
+                                <p className="font-semibold text-emerald-950">{resumenPartes.join(" · ")}</p>
+                              )}
                               {!tieneAny && (
                                 <p className="text-xs text-emerald-700">Sin cantidades cargadas para este comedor en el periodo.</p>
                               )}
                               {d ? (
                                 <>
+                                  {verdurasRows.length > 0 && (
                                   <div>
                                     <p className="text-[10px] font-bold text-emerald-800/80 uppercase">Verduras — detalle (kg)</p>
                                     <ul className="mt-0.5 space-y-0.5">
-                                      {(["cebolla_kg", "zanahoria_kg", "zapallo_kg", "papa_kg", "acelga_kg"] as const).map((k) => {
-                                        const v = d[k] ?? 0;
+                                      {verdurasRows.map(({ k, v }) => {
                                         const label = k.replace(/_kg$/, "").replace(/_/g, " ");
                                         return (
-                                          <li key={k} className={v === 0 ? "text-emerald-700/60" : ""}>
-                                            {label}: {Number(v).toLocaleString("es-AR", { maximumFractionDigits: 1 })} kg
+                                          <li key={k}>
+                                            {label}: {Number(v).toLocaleString("es-AR", { maximumFractionDigits: 0 })} kg
                                           </li>
                                         );
                                       })}
                                     </ul>
                                   </div>
+                                  )}
                                   <div>
                                     <p className="text-[10px] font-bold text-emerald-800/80 uppercase">Frutas (u.)</p>
-                                    <p className="mt-0.5">Unidades: {Number(d.frutas_unidades ?? 0).toLocaleString("es-AR")}</p>
+                                    {Number(d.frutas_unidades ?? 0) > 0 && (
+                                      <p className="mt-0.5">Unidades: {Number(d.frutas_unidades ?? 0).toLocaleString("es-AR")}</p>
+                                    )}
                                   </div>
+                                  {carnesRows.length > 0 && (
                                   <div>
                                     <p className="text-[10px] font-bold text-emerald-800/80 uppercase">Carnes — detalle (kg)</p>
                                     <ul className="mt-0.5 space-y-0.5">
-                                      {(["carne_vacuna_kg", "pollo_kg", "cerdo_kg"] as const).map((k) => {
-                                        const v = d[k] ?? 0;
+                                      {carnesRows.map(({ k, v }) => {
                                         const label = k === "carne_vacuna_kg" ? "Carne vacuna" : k === "pollo_kg" ? "Pollo" : "Cerdo";
                                         return (
-                                          <li key={k} className={v === 0 ? "text-emerald-700/60" : ""}>
-                                            {label}: {Number(v).toLocaleString("es-AR", { maximumFractionDigits: 1 })} kg
+                                          <li key={k}>
+                                            {label}: {Number(v).toLocaleString("es-AR", { maximumFractionDigits: 0 })} kg
                                           </li>
                                         );
                                       })}
                                     </ul>
                                   </div>
+                                  )}
                                 </>
                               ) : (
-                                <p className="mt-1">{detail.recursos.frescos_kg.toLocaleString("es-AR", { maximumFractionDigits: 1 })} kg total (sin desglose)</p>
+                                detail.recursos.frescos_kg > 0 && (
+                                  <p className="mt-1">{detail.recursos.frescos_kg.toLocaleString("es-AR", { maximumFractionDigits: 0 })} kg total (sin desglose)</p>
+                                )
                               )}
                             </div>
                           );
                         })()}
                       </div>
-                      <div className="p-3 bg-amber-50 rounded-xl">
+                      <div className="p-3 bg-amber-50 rounded-xl sm:col-span-2">
                         <span className="font-bold text-amber-800">Gas</span>
-                        <ul className="mt-1 space-y-0.5 text-amber-900">
-                          <li>10 kg: {detail.recursos.gas.garrafas_10}</li>
-                          <li>15 kg: {detail.recursos.gas.garrafas_15}</li>
-                          <li>45 kg: {detail.recursos.gas.garrafas_45}</li>
-                        </ul>
+                        {detail.recursos.gas.garrafas_10 === 0 &&
+                        detail.recursos.gas.garrafas_15 === 0 &&
+                        detail.recursos.gas.garrafas_45 === 0 ? (
+                          <p className="mt-1 text-xs text-amber-900">Sin cantidades cargadas para este comedor en el periodo.</p>
+                        ) : (
+                          <ul className="mt-1 space-y-0.5 text-amber-900">
+                            <li>10 kg: {detail.recursos.gas.garrafas_10}</li>
+                            <li>15 kg: {detail.recursos.gas.garrafas_15}</li>
+                            <li>45 kg: {detail.recursos.gas.garrafas_45}</li>
+                          </ul>
+                        )}
                       </div>
-                      {detail.recursos.fumigacion && <div className="p-3 bg-slate-50 rounded-xl sm:col-span-2"><span className="font-bold text-slate-700">Fumigación:</span> Sí</div>}
+                      {detail.recursos.fumigacion && <div className="p-3 bg-slate-50 rounded-xl sm:col-span-2"><span className="font-bold text-slate-700">Fumigación (servicio trimestral):</span> Sí</div>}
                     </div>
                   </div>
                   <div className="pt-4 border-t border-slate-100 space-y-3">
@@ -815,13 +917,11 @@ function ComedoresPageContent() {
                         carnes: 0,
                         otros_recursos: 0,
                       };
-                      const global = comp.gasto_total_global ?? 0;
                       const comedorTot = comp.gasto_total_comedor ??
                         comp.raciones + comp.becados + comp.refrigerio_comida + comp.carnes + comp.otros_recursos;
                       const fmtArs = (n: number) =>
                         `$${n.toLocaleString("es-AR", { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-                      const pctGlobal = (n: number) => (global > 0 ? (n / global) * 100 : 0);
-                      const pctComedor = global > 0 ? (comedorTot / global) * 100 : 0;
+                      const pctPresupuestoPropio = (n: number) => (comedorTot > 0 ? (n / comedorTot) * 100 : 0);
                       const items = [
                         { key: "raciones", label: "Raciones / monto invertido (p. ej. Teknofood)", value: comp.raciones },
                         { key: "becados", label: "Becados", value: comp.becados },
@@ -829,7 +929,7 @@ function ComedoresPageContent() {
                         { key: "carnes", label: "Carnes", value: comp.carnes },
                         {
                           key: "otros_recursos",
-                          label: "Otros recursos (gas, limpieza, fumigación, etc.)",
+                          label: "Otros recursos (gas, limpieza bimestral, fumigación trimestral, etc.)",
                           value: comp.otros_recursos,
                         },
                       ];
@@ -837,28 +937,27 @@ function ComedoresPageContent() {
                         <>
                           <p className="text-xs text-slate-600 leading-relaxed">
                             Vista por <strong>grandes programas</strong>: raciones, becados, refrigerio/comidas, carnes y otros recursos. Cada fila es el monto de <strong>esta dependencia</strong> y su porcentaje respecto del{" "}
-                            <strong>gasto total del presupuesto</strong> (todas las dependencias y todos los rubros cargados).
-                            {global > 0 && (
+                            <strong>presupuesto propio de la dependencia</strong>.
+                            {comedorTot > 0 && (
                               <>
                                 {" "}
-                                Gasto total programa: <strong>{fmtArs(global)}</strong>. Esta dependencia:{" "}
-                                <strong>{fmtArs(comedorTot)}</strong> ({pctComedor.toFixed(2)}% del total).
+                                Presupuesto de esta dependencia: <strong>{fmtArs(comedorTot)}</strong>.
                               </>
                             )}
-                            {global <= 0 && <span className="text-amber-700"> Sin total global en base (presupuesto vacío).</span>}
+                            {comedorTot <= 0 && <span className="text-amber-700"> Sin presupuesto cargado para esta dependencia.</span>}
                           </p>
                           <div className="space-y-3 text-sm">
                             {items.map((item) => {
-                              const pg = pctGlobal(item.value);
+                              const pg = pctPresupuestoPropio(item.value);
                               return (
                                 <div key={item.key}>
                                   <div className="flex flex-wrap justify-between gap-x-2 gap-y-0.5 mb-1">
                                     <span className="font-semibold text-slate-600">{item.label}</span>
                                     <span className="font-black text-slate-800 text-right">
                                       {fmtArs(item.value)}
-                                      {global > 0 && (
+                                      {comedorTot > 0 && (
                                         <span className="text-slate-500 font-semibold ml-1">
-                                          ({pg.toFixed(2)}% del gasto total)
+                                          ({pg.toFixed(0)}% del presupuesto propio)
                                         </span>
                                       )}
                                     </span>

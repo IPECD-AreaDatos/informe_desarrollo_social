@@ -48,7 +48,7 @@ export function KPICard({
                         <button
                             onMouseEnter={() => setShowTooltip(true)}
                             onMouseLeave={() => setShowTooltip(false)}
-                            className="text-slate-300 hover:text-slate-500 transition-colors p-1"
+                            className="text-slate-500 hover:text-slate-700 transition-colors p-1"
                         >
                             <HelpCircle size={16} />
                         </button>
@@ -76,11 +76,11 @@ export function KPICard({
                         {secondaryValue && (
                             <p className="text-[11px] font-bold text-slate-400 mt-1 flex items-center gap-1.5 uppercase tracking-wide">
                                 <span className="w-1.5 h-1.5 rounded-full bg-slate-300" />
-                                {secondaryLabel || 'de'} <span className="text-slate-600 font-black">{secondaryValue}</span>
+                                {secondaryLabel || 'de'} <span className="text-slate-600 font-black whitespace-pre-line leading-snug">{secondaryValue}</span>
                             </p>
                         )}
                         {noteText && (
-                            <p className="text-[10px] text-slate-500 mt-1.5 leading-snug">{noteText}</p>
+                            <p className="text-xs font-semibold text-slate-700 mt-1.5 leading-snug">{noteText}</p>
                         )}
                     </div>
                 )}
