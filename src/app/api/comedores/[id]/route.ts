@@ -7,8 +7,8 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const comedorId = parseInt(id, 10);
-    if (Number.isNaN(comedorId)) {
+    const comedorId = decodeURIComponent(id).trim();
+    if (!comedorId) {
       return NextResponse.json({ success: false, error: 'ID inválido' }, { status: 400 });
     }
 

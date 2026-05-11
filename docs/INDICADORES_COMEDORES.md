@@ -6,7 +6,7 @@ Este documento explica **qué muestra cada número o gráfico** del tablero, **d
 
 ## Carga de marzo (módulo de montos)
 
-Los archivos de `docs/marzo` se procesan por ETL y se guardan así:
+Los archivos del lote mensual (convención `docs/datos/<mes>/`, o la ruta que indiques con `--marzo-dir` al ETL) se procesan por ETL y se guardan así:
 
 - `ART DE LIMPIEZA.xlsx` -> rubro `otros_recursos/limpieza` (monto total + conteos + combo de ítems).
 - `Presupuesto 2026 Fumigación.xlsx` -> rubro `otros_recursos/fumigacion` (monto + nómina por dependencia).
@@ -218,4 +218,4 @@ Luego se suman esos totales de todos los comedores para el período seleccionado
 | Comedores por depto/localidad | Anexo II | PADRON INTERIOR | DEPARTAMENTO, LOCALIDAD |
 | Ubicación (mapa/enlace) | Anexo II | PADRON CAPITAL | ENLACE GOOGLE MAPS, COORDENADAS |
 
-Si necesitás más detalle sobre algún indicador o sobre cómo se ejecuta la carga de datos, podés consultar también el archivo `scripts/comedores/README.md` del proyecto.
+Si necesitás más detalle sobre algún indicador o sobre cómo se ejecuta la carga de datos, consultá la documentación en `docs/` y el nuevo README en `scripts/comedores/` cuando se incorpore el ETL del plan siguiente.

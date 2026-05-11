@@ -75,7 +75,7 @@ interface SummaryData {
 }
 
 interface RankingRow {
-  comedor_id: number;
+  comedor_id: string;
   nombre: string;
   zona_nombre: string | null;
   ambito: string;
@@ -85,11 +85,20 @@ interface RankingRow {
   unidad?: string;
 }
 
+/** Fila del ranking con campos derivados para la tabla (monto mostrado, % sobre total del rubro). */
+type RankingTablaRow = RankingRow & {
+  benef: number;
+  monto: number;
+  montoRubro: number;
+  pctParticipacionRelativa: number | null;
+  promBenef: number | null;
+};
+
 type SortKey = "nombre" | "monto" | "benef";
 type RankingAmbitoFilter = "TODOS" | "CAPITAL" | "INTERIOR";
 
 interface ComedorDetailData {
-  comedor_id: number;
+  comedor_id: string;
   nombre: string;
   domicilio: string | null;
   zona_nombre: string | null;
@@ -140,11 +149,11 @@ const RANKING_TABS: { key: RankingTipo; label: string }[] = [
 
 const RANKING_TOOLTIP: Record<RankingTipo, string> = {
   raciones:
-    "Monto = (beneficiarios_dep / total_beneficiarios) × monto_mensual_teknofood. Total mensual = raciones_diarias × $1.600 × 30 días.",
+    "Monto Teknofood por dependencia = (comidas + refrigerios del Padrón Teknofood) × $1.600. El total mensual en resumen es la suma de esos montos por comedor.",
   becados:
     "Monto prorrateado del presupuesto total de becados según cantidad de becarios por dependencia.",
   refrigerio_comida:
-    "Monto = (kg_dep / total_kg) × $107.989.875,73 (presupuesto frutas y verduras).",
+    "Monto por comedor = columna Gasto mensual del CSV Frutas/Verduras (carga en presupuesto por dependencia). Si no hubiera esas filas, el sistema prorratearía el total del mes por kg + unidades de fruta.",
   carnes:
     "Monto = (kg_semanal × precio_tipo × 4,33) escalado al total de $137.123.110,80. Precios: vacuna $13.380/kg, pollo $7.679/kg, cerdo $8.420/kg.",
   otros_recursos:
@@ -183,7 +192,7 @@ function ComedoresPageContent() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [loadingSummary, setLoadingSummary] = useState(true);
   const [loadingRankings, setLoadingRankings] = useState(false);
-  const [detailId, setDetailId] = useState<number | null>(null);
+  const [detailId, setDetailId] = useState<string | null>(null);
   const [detail, setDetail] = useState<ComedorDetailData | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const rankingFetchLimit = searchTerm.trim() ? 2000 : 50;
@@ -225,18 +234,26 @@ function ComedoresPageContent() {
   }, [periodo, rankingTipo, rankingAmbito, rankingFetchLimit]);
 
   const rankingRows = useMemo(() => {
-    const totalMontoInvertido = summary?.montos?.monto_invertido_total ?? 0;
+    const totalRubro = totalRubroForRanking(rankingTipo, summary?.montos);
     const normalizedSearch = searchTerm.trim().toLowerCase();
-    const rows = rankings
+    const rows: RankingTablaRow[] = rankings
       .map((r) => {
         const benef = Number(r.beneficiarios ?? 0);
-        const monto = Number(r.valor ?? 0);
+        const montoRubro = Number(r.valor ?? 0);
+        /** En pestaña Promedio la API ordena por promedio pero devuelve el gasto total; acá mostramos $/benef. */
+        const monto =
+          rankingTipo === "promedio_beneficiario" && benef > 0 ? montoRubro / benef : montoRubro;
         const pctParticipacionRelativa =
-          rankingTipo !== "promedio_beneficiario" && totalMontoInvertido > 0
-            ? (monto / totalMontoInvertido) * 100
+          rankingTipo !== "promedio_beneficiario" && totalRubro > 0
+            ? (montoRubro / totalRubro) * 100
             : null;
-        const promBenef = benef > 0 ? monto / benef : null;
-        return { ...r, benef, monto, pctParticipacionRelativa, promBenef };
+        const promBenef =
+          rankingTipo === "promedio_beneficiario"
+            ? null
+            : benef > 0
+              ? montoRubro / benef
+              : null;
+        return { ...r, benef, monto, montoRubro, pctParticipacionRelativa, promBenef };
       })
       .filter((r) => {
         if (!normalizedSearch) return true;
@@ -245,10 +262,17 @@ function ComedoresPageContent() {
       })
       .filter((r) => {
         const montoPositivo = Number(r.monto ?? 0) > 0;
-        const benefPositivo = Number(r.benef ?? 0) > 0;
+        const montoRubroPositivo = r.montoRubro > 0;
+        const benefPositivo = r.benef > 0;
         const pctPositivo = Number(r.pctParticipacionRelativa ?? 0) > 0;
         const promPositivo = Number(r.promBenef ?? 0) > 0;
-        return montoPositivo || benefPositivo || pctPositivo || promPositivo;
+        return (
+          montoPositivo ||
+          (rankingTipo === "promedio_beneficiario" && montoRubroPositivo && benefPositivo) ||
+          benefPositivo ||
+          pctPositivo ||
+          promPositivo
+        );
       });
 
     rows.sort((a, b) => {
@@ -319,7 +343,7 @@ function ComedoresPageContent() {
     }
     setLoadingDetail(true);
     fetch(
-      `${process.env.NEXT_PUBLIC_API_URL || ""}/api/comedores/${detailId}?periodo=${encodeURIComponent(periodo)}`
+      `${process.env.NEXT_PUBLIC_API_URL || ""}/api/comedores/${encodeURIComponent(detailId)}?periodo=${encodeURIComponent(periodo)}`
     )
       .then((r) => r.json())
       .then((j) => {
@@ -596,7 +620,15 @@ function ComedoresPageContent() {
                   </span>
                 </th>
                 <th className="pb-3 pr-2 sm:pr-4 text-right hidden md:table-cell">
-                  <span title="Participación sobre el total de monto invertido">Participación relativa</span>
+                  <span
+                    title={
+                      rankingTipo === "promedio_beneficiario"
+                        ? "No aplica en esta pestaña."
+                        : "Participación del monto de la dependencia sobre el total mensual del rubro de la pestaña (resumen del periodo)."
+                    }
+                  >
+                    Participación relativa
+                  </span>
                 </th>
                 <th className="pb-3 pr-2 sm:pr-4 text-right hidden lg:table-cell">
                   Monto prom./benef.
@@ -623,7 +655,7 @@ function ComedoresPageContent() {
                 </tr>
               ) : (
                 rankingRows.map((r, i) => {
-                  const puedeDetalle = r.comedor_id > 0;
+                  const puedeDetalle = Boolean(r.comedor_id?.trim());
                   return (
                   <tr
                     key={r.comedor_id || `row-${i}`}
@@ -642,7 +674,10 @@ function ComedoresPageContent() {
                     <td className="py-3 pr-2 sm:pr-4 font-bold text-slate-800 truncate max-w-[120px] sm:max-w-none">{r.nombre}</td>
                     <td className="py-3 pr-2 sm:pr-4 text-slate-600 truncate max-w-[80px] sm:max-w-none">{r.zona_nombre || r.ambito}</td>
                     <td className="py-3 pr-2 sm:pr-4 text-right font-black text-slate-800 whitespace-nowrap">
-                      ${r.monto.toLocaleString("es-AR", { maximumFractionDigits: 0 })}
+                      $
+                      {r.monto.toLocaleString("es-AR", {
+                        maximumFractionDigits: rankingTipo === "promedio_beneficiario" ? 2 : 0,
+                      })}
                     </td>
                     <td className="py-3 pr-2 sm:pr-4 text-right text-slate-600 whitespace-nowrap hidden md:table-cell">
                       {r.pctParticipacionRelativa != null

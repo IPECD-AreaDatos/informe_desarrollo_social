@@ -1,8 +1,9 @@
-# Imagen para ejecutar el ETL de comedores (Node + código + mysql2 + xlsx)
+# ETL comedores: Node + mysql2; pasar args al contenedor (ej. --dir docs/marzo --mes marzo --anio 2026).
+# Loader alternativo (padron + staging): --entrypoint node … scripts/comedores/03_load_padron_first.js -- …
 FROM node:20-alpine
 WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm install
 COPY . .
-ENTRYPOINT ["node", "scripts/comedores/02_etl_comedores.js"]
+ENTRYPOINT ["node", "scripts/comedores/02_load_carpeta_mes.js"]
 CMD []

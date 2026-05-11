@@ -214,11 +214,8 @@ Objetivo: un solo script que (1) cree el esquema si no existe y (2) inserte dato
 
 ### 5.3 Ubicación y uso sugerido
 
-- `scripts/comedores/`  
-  - `01_schema_comedores.sql` — solo CREATE TABLE (opcional, para ejecutar a mano en MySQL).  
-  - `02_etl_comedores.js` (o `.ts`) — lee Excel, crea tablas si se indica, inserta catálogos y datos (Interior + Capital) con parámetro `periodo`.  
-- Ejecución: `node scripts/comedores/02_etl_comedores.js --excel1 "Informe 1. ANEXO II bis....xlsx" --excel2 "Informe Anexo II Comedores.xlsx" --periodo "Plan Verano 2026"`  
-- Conexión DB: reutilizar variables de entorno del proyecto (DB_HOST, DB_USER, DB_PASSWORD, DB_NAME); si se usa base distinta para comedores, añadir ej. `DB_NAME_COMEDORES=comedores`.
+- `scripts/comedores/` — carpeta reservada para el nuevo ETL (schema + carga desde CSV por mes, ej. `docs/datos/marzo/`). Los archivos `01_schema_comedores.sql`, `02_etl_comedores.js`, validación y cruce Excel/CSV anteriores se retiraron del repo tras el reset de tablas; la implementación nueva sigue este plan como referencia de modelo.
+- Conexión DB: reutilizar variables de entorno del proyecto (`DB_HOST`, `DB_USER`, `DB_PASSWORD`, `BASE_DESARROLLO_SOCIAL` o `DB_NAME_COMEDORES` o `DB_NAME`; ver `src/lib/db.ts`).
 
 ---
 
@@ -230,11 +227,11 @@ Objetivo: un solo script que (1) cree el esquema si no existe y (2) inserte dato
 
 ---
 
-## 7. Resumen de tareas (todas para implementar)
+## 7. Resumen de tareas (post-reset)
 
-1. Escribir `01_schema_comedores.sql` con todos los CREATE TABLE en el orden indicado.  
-2. Implementar `02_etl_comedores.js`: conexión MySQL, creación de tablas (o ejecución del SQL), carga de catálogos, ETL Interior (ZONA + COMEDOR + RACION), ETL Capital (ZONA + COMEDOR + BENEFICIO_*), unificación periodo y manejo de Nº COMEDOR S/N.  
-3. Documentar en README o en este plan el comando exacto y las variables de entorno para ejecutar el script.  
-4. (Opcional) Añadir tests o chequeos de integridad (conteos por tabla, existencia de FKs) al final del script.
+1. Volver a escribir el SQL de creación (`01_schema_*.sql` o equivalente) alineado al modelo que definas con los nuevos CSV.  
+2. Implementar el ETL (Node u otra herramienta): conexión MySQL, creación de tablas, carga desde la carpeta mensual y mapeo a COMEDOR / RACION / BENEFICIO_* / PRESUPUESTO_* según corresponda.  
+3. Documentar en `scripts/comedores/README.md` el comando exacto y las variables de entorno.  
+4. (Opcional) Tests o chequeos de integridad al final del script.
 
-Este documento queda como plan de referencia para la Opción B; la implementación concreta (archivos `.sql` y `.js`) se genera en los siguientes pasos.
+Este documento queda como referencia de modelo Opción B; los archivos concretos se vuelven a generar en el plan de implementación actual.
