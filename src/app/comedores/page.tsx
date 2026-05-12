@@ -18,6 +18,7 @@ import {
   HandCoins,
   Info,
 } from "lucide-react";
+import { apiUrl } from "@/lib/apiBase";
 import { Header } from "@/components/Header";
 import { KPICard } from "@/components/KPICard";
 import { clsx } from "clsx";
@@ -198,7 +199,7 @@ function ComedoresPageContent() {
   const rankingFetchLimit = searchTerm.trim() ? 2000 : 50;
 
   useEffect(() => {
-    fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/comedores/periodos`)
+    fetch(apiUrl("/api/comedores/periodos"))
       .then((r) => r.json())
       .then((j) => {
         if (j.success && j.data?.length) {
@@ -212,7 +213,7 @@ function ComedoresPageContent() {
   useEffect(() => {
     if (periodo === undefined) return;
     setLoadingSummary(true);
-    fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/comedores/summary?periodo=${encodeURIComponent(periodo)}`)
+    fetch(apiUrl(`/api/comedores/summary?periodo=${encodeURIComponent(periodo)}`))
       .then((r) => r.json())
       .then((j) => {
         if (j.success) setSummary(j.data);
@@ -224,7 +225,9 @@ function ComedoresPageContent() {
     setLoadingRankings(true);
     const ambitoParam = rankingAmbito === "TODOS" ? "" : `&ambito=${rankingAmbito}`;
     fetch(
-      `${process.env.NEXT_PUBLIC_API_URL || ""}/api/comedores/rankings?periodo=${encodeURIComponent(periodo)}&tipo=${rankingTipo}&limit=${rankingFetchLimit}${ambitoParam}`
+      apiUrl(
+        `/api/comedores/rankings?periodo=${encodeURIComponent(periodo)}&tipo=${rankingTipo}&limit=${rankingFetchLimit}${ambitoParam}`
+      )
     )
       .then((r) => r.json())
       .then((j) => {
@@ -343,7 +346,7 @@ function ComedoresPageContent() {
     }
     setLoadingDetail(true);
     fetch(
-      `${process.env.NEXT_PUBLIC_API_URL || ""}/api/comedores/${encodeURIComponent(detailId)}?periodo=${encodeURIComponent(periodo)}`
+      apiUrl(`/api/comedores/${encodeURIComponent(detailId)}?periodo=${encodeURIComponent(periodo)}`)
     )
       .then((r) => r.json())
       .then((j) => {

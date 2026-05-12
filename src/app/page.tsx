@@ -32,6 +32,7 @@ import { KPICard } from "@/components/KPICard";
 import { CategoryCard } from "@/components/CategoryCard";
 import { useSearchParams } from "next/navigation";
 import { DemographicStackedChart } from "@/components/DemographicStackedChart";
+import { apiUrl } from "@/lib/apiBase";
 
 function SummaryDashboardContent() {
   const [data, setData] = useState<any>(null);
@@ -52,7 +53,7 @@ function SummaryDashboardContent() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/stats/ministerio?from=${from}&to=${to}`);
+      const res = await fetch(apiUrl(`/api/stats/ministerio?from=${from}&to=${to}`));
       if (!res.ok) throw new Error("Error fetching data");
       const d = await res.json();
       setData(d.data);

@@ -15,6 +15,7 @@ import {
 import { useSearchParams } from "next/navigation";
 import { Header } from "@/components/Header";
 import { KPICard } from "@/components/KPICard";
+import { apiUrl } from "@/lib/apiBase";
 
 function TerritorialPageContent() {
     const [data, setData] = useState<any>(null);
@@ -33,7 +34,7 @@ function TerritorialPageContent() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/stats/territorial?from=${from}&to=${to}`);
+            const res = await fetch(apiUrl(`/api/stats/territorial?from=${from}&to=${to}`));
             const json = await res.json();
             if (json.success) setData(json.data);
         } catch (error) {

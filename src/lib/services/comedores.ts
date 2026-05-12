@@ -1,4 +1,5 @@
 import { getComedoresConnection } from '../db';
+import { TEKNOFOOD_MONTO_FIJO_ARS } from '../teknofood';
 
 /** Orden cronológico para slugs tipo `marzo-2026` (no lexicográfico). */
 const MESES_SLUG: Record<string, number> = {
@@ -466,7 +467,7 @@ async function getSummaryByPeriodo(periodo: string): Promise<ComedoresSummary> {
         fumigacion_count: Number(fum[0]?.n ?? 0),
       },
       montos: {
-        monto_invertido_total: Number(montos[0]?.monto_invertido_total ?? 0),
+        monto_invertido_total: TEKNOFOOD_MONTO_FIJO_ARS,
         monto_invertido_cantidad: Number(montos[0]?.monto_invertido_cantidad ?? 0),
         becados_monto: Number(montos[0]?.becados_monto ?? 0),
         becados_cantidad: (() => {
@@ -624,22 +625,6 @@ async function getRankings(params: {
       const ambitoSesgado = rows.length > 0 && hasCapital && !hasInterior;
       const sinMonto = (rows as any[]).every((row: any) => Number(row.valor ?? 0) <= 0);
       if ((sinMonto && rows.length > 0) || ambitoSesgado || rows.length === 0) {
-        let totalMontoResumen = 0;
-        try {
-          const [tr]: any = await connection.execute(
-            `SELECT COALESCE((
-               SELECT pr.monto_total FROM PRESUPUESTO_RESUMEN pr
-               WHERE pr.rubro = 'monto_invertido'
-                 AND (TRIM(COALESCE(pr.subrubro, '')) = 'teknofood' OR TRIM(COALESCE(pr.subrubro, '')) = '')
-                 AND COALESCE(pr.monto_total, 0) > 0
-                 AND (TRIM(COALESCE(@cp, '')) = '' OR CONVERT(TRIM(pr.periodo) USING utf8mb4) COLLATE utf8mb4_unicode_ci <=> @cp)
-               ORDER BY pr.resumen_id DESC LIMIT 1
-             ), 0) AS m`
-          );
-          totalMontoResumen = Number(tr[0]?.m ?? 0);
-        } catch (e: any) {
-          if (e?.code !== 'ER_NO_SUCH_TABLE') throw e;
-        }
         let rowsRacion: any[] = [];
         try {
           const [rr]: any = await connection.execute(
@@ -667,14 +652,22 @@ async function getRankings(params: {
         }
         const baseRows = rowsRacion.length > 0 ? rowsRacion : rows;
         const benefTotal = (baseRows as any[]).reduce((s, row) => s + Number(row.beneficiarios ?? 0), 0);
-        if (totalMontoResumen > 0 && benefTotal > 0 && baseRows.length > 0) {
+        if (benefTotal > 0 && baseRows.length > 0) {
           rows = (baseRows as any[]).map((row: any) => ({
             ...row,
-            valor: (totalMontoResumen * Number(row.beneficiarios ?? 0)) / benefTotal,
+            valor: (TEKNOFOOD_MONTO_FIJO_ARS * Number(row.beneficiarios ?? 0)) / benefTotal,
             beneficiarios: Number(row.beneficiarios ?? 0),
           }));
           rows.sort((a: any, b: any) => Number(b.valor) - Number(a.valor));
         }
+      }
+      const sumRacionesValor = (rows as any[]).reduce((s, row) => s + Number(row.valor ?? 0), 0);
+      if (sumRacionesValor > 0) {
+        const k = TEKNOFOOD_MONTO_FIJO_ARS / sumRacionesValor;
+        rows = (rows as any[]).map((row: any) => ({
+          ...row,
+          valor: Number(row.valor ?? 0) * k,
+        }));
       }
       const sliced = rows.slice(offsetVal, offsetVal + limitVal);
       return sliced.map((r: any) => ({
@@ -1203,6 +1196,20 @@ async function getComedorDetail(comedorId: string, periodo: string): Promise<Com
       gastoComp = [];
     }
 
+    let teknoPdTotalPeriodo = 0;
+    try {
+      const [tTot]: any = await connection.execute(
+        `SELECT COALESCE(SUM(pd.monto), 0) AS s
+         FROM PRESUPUESTO_DEPENDENCIA pd
+         WHERE pd.rubro = 'monto_invertido'
+           AND (pd.subrubro <=> 'teknofood' OR pd.subrubro IS NULL OR TRIM(COALESCE(pd.subrubro, '')) = '')
+           AND (TRIM(COALESCE(@cp, '')) = '' OR CONVERT(TRIM(pd.periodo) USING utf8mb4) COLLATE utf8mb4_unicode_ci <=> @cp)`
+      );
+      teknoPdTotalPeriodo = Number(tTot[0]?.s ?? 0);
+    } catch (e: any) {
+      if (e?.code !== 'ER_NO_SUCH_TABLE') throw e;
+    }
+
     let gastoTotalGlobal = 0;
     try {
       const [gt]: any = await connection.execute(
@@ -1217,6 +1224,15 @@ async function getComedorDetail(comedorId: string, periodo: string): Promise<Com
          AS t`
       );
       gastoTotalGlobal = Number(gt[0]?.t ?? 0);
+      try {
+        const [tkMx]: any = await connection.execute(
+          `SELECT COALESCE((SELECT MAX(t.monto) FROM PRESUPUESTO_TEKNOFOOD t WHERE t.escala='MENSUAL' AND t.concepto='raciones_mensuales' AND (TRIM(COALESCE(@cp, '')) = '' OR CONVERT(TRIM(t.periodo) USING utf8mb4) COLLATE utf8mb4_unicode_ci <=> @cp)), 0) AS x`
+        );
+        const teknoFromDb = Number(tkMx[0]?.x ?? 0);
+        gastoTotalGlobal = gastoTotalGlobal - teknoFromDb + TEKNOFOOD_MONTO_FIJO_ARS;
+      } catch (e2: any) {
+        if (e2?.code !== 'ER_NO_SUCH_TABLE') throw e2;
+      }
     } catch (e: any) {
       if (e?.code !== 'ER_NO_SUCH_TABLE') throw e;
     }
@@ -1250,6 +1266,15 @@ async function getComedorDetail(comedorId: string, periodo: string): Promise<Com
       }));
     } catch (e: any) {
       if (e?.code !== 'ER_NO_SUCH_TABLE') throw e;
+    }
+    if (teknoPdTotalPeriodo > 0) {
+      const kTek = TEKNOFOOD_MONTO_FIJO_ARS / teknoPdTotalPeriodo;
+      presupuestoDesglose = presupuestoDesglose.map((row) => {
+        const sr = (row.subrubro ?? '').trim();
+        if (row.rubro !== 'monto_invertido') return row;
+        if (sr !== '' && sr !== 'teknofood') return row;
+        return { ...row, monto: row.monto * kTek };
+      });
     }
 
     const l = limp[0] || {};
@@ -1334,7 +1359,9 @@ async function getComedorDetail(comedorId: string, periodo: string): Promise<Com
       frescosDesglose.carne_vacuna_kg + frescosDesglose.pollo_kg + frescosDesglose.cerdo_kg;
     const frescosKgTotal = kgVerduras + kgCarnes;
 
-    const raciones = Number(gastoComp[0]?.raciones ?? 0);
+    const racionesRaw = Number(gastoComp[0]?.raciones ?? 0);
+    const raciones =
+      teknoPdTotalPeriodo > 0 ? (racionesRaw * TEKNOFOOD_MONTO_FIJO_ARS) / teknoPdTotalPeriodo : racionesRaw;
     const becados = Number(gastoComp[0]?.becados ?? 0);
     const refrigerio_comida = Number(gastoComp[0]?.refrigerio_comida ?? 0);
     const carnesMonto = Number(gastoComp[0]?.carnes ?? 0);

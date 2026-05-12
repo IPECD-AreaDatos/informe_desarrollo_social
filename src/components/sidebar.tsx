@@ -15,6 +15,7 @@ import {
 import Link from "next/link";
 
 import { usePathname } from "next/navigation";
+import { APP_BASE_PATH } from "@/lib/basePath";
 import { clsx } from "clsx";
 import { createContext, useContext, useState } from "react";
 
@@ -68,7 +69,6 @@ export function Sidebar() {
     const pathname = usePathname();
     const [open, setOpen] = useState(false);
     const { collapsed, setCollapsed } = useSidebar();
-    const basePath = process.env.NEXT_PUBLIC_BASE_PATH || "";
 
     const renderNav = (onNavigate?: () => void, compact?: boolean) => (
         <>
@@ -76,7 +76,7 @@ export function Sidebar() {
                 {!compact && (
                     <div className="flex flex-1 items-center justify-center w-full px-2">
                         <img
-                            src={`${basePath}/Logo_desarrollo_social.png`}
+                            src={`${APP_BASE_PATH}/Logo_desarrollo_social.png`}
                             alt="Desarrollo Social"
                             className="w-full max-w-[200px] h-auto max-h-[80px] object-contain"
                         />
@@ -85,7 +85,7 @@ export function Sidebar() {
                 {compact && (
                     <Link href="/" className="flex shrink-0 items-center justify-center w-full" onClick={onNavigate}>
                         <img
-                            src={`${basePath}/Logo_desarrollo_social.png`}
+                            src={`${APP_BASE_PATH}/Logo_desarrollo_social.png`}
                             alt="Desarrollo Social"
                             className="w-10 h-10 object-contain"
                         />
@@ -110,12 +110,12 @@ export function Sidebar() {
                                     compact ? "justify-center p-3" : "gap-3 px-4 py-3",
                                     isActive || (isAnySubActive && !compact)
                                         ? "bg-[var(--primary)] text-white font-semibold shadow-lg shadow-green-500/20"
-                                        : "text-gray-600 hover:text-black hover:bg-gray-100"
+                                        : "text-slate-300 hover:text-white hover:bg-white/10"
                                 )}
                             >
                                 <item.icon
                                     size={20}
-                                    className={clsx("shrink-0", isActive || isAnySubActive ? "text-white" : "group-hover:text-black")}
+                                    className={clsx("shrink-0", isActive || isAnySubActive ? "text-white" : "group-hover:text-white")}
                                 />
                                 {!compact && <span className="text-sm">{item.name}</span>}
                             </Link>
@@ -127,12 +127,12 @@ export function Sidebar() {
                                             key={sub.href}
                                             href={sub.href}
                                             onClick={onNavigate}
-                                            className={clsx(
-                                                "flex items-center gap-3 px-4 py-2 rounded-xl text-xs transition-all duration-200",
-                                                pathname === sub.href
-                                                    ? "text-[var(--primary)] font-bold bg-green-50"
-                                                    : "text-gray-400 hover:text-slate-800 hover:bg-gray-50"
-                                            )}
+                                    className={clsx(
+                                        "flex items-center gap-3 px-4 py-2 rounded-xl text-xs transition-all duration-200",
+                                        pathname === sub.href
+                                            ? "text-[var(--primary)] font-bold bg-white/10"
+                                            : "text-slate-400 hover:text-white hover:bg-white/5"
+                                    )}
                                         >
                                             <sub.icon size={16} />
                                             <span>{sub.name}</span>
@@ -148,8 +148,8 @@ export function Sidebar() {
             <div className={clsx("mt-auto pb-4", compact ? "p-2" : "p-6 w-full")}>
                 <div className={clsx("flex justify-center", compact ? "" : "w-full items-center px-4 py-2")}>
                     <img
-                        src={`${basePath}/LOGO IPECD-12 (1).png`}
-                        alt="IPECD"
+                        src={`${APP_BASE_PATH}/IMI.png`}
+                        alt="IMI"
                         className={clsx("object-contain", compact ? "w-10 h-10" : "w-full max-w-[180px] h-auto max-h-[70px]")}
                     />
                 </div>
@@ -181,7 +181,7 @@ export function Sidebar() {
                 <button
                     type="button"
                     aria-label={collapsed ? "Expandir menú" : "Comprimir menú"}
-                    className="absolute right-0 top-4 -translate-y-1/2 translate-x-1/2 h-8 w-8 flex items-center justify-center rounded-lg bg-gray-200 text-gray-800 shadow-md hover:bg-gray-300 transition-colors"
+                    className="absolute right-0 top-4 -translate-y-1/2 translate-x-1/2 h-8 w-8 flex items-center justify-center rounded-lg bg-white/15 text-slate-100 shadow-md hover:bg-white/25 transition-colors"
                     onClick={() => setCollapsed(!collapsed)}
                 >
                     {collapsed ? (

@@ -4,8 +4,8 @@
   color-scheme: light;
   --background: #F8FAFC;
   --foreground: #0F172A;
-  --sidebar-bg: #FFFFFF;
-  --sidebar-foreground: #0F172A;
+  --sidebar-bg: lab(16.132% -0.318035 -14.6672);
+  --sidebar-foreground: #e2e8f0;
   --primary: #22C55E;
   --primary-foreground: #FFFFFF;
   --secondary: #F1F5F9;

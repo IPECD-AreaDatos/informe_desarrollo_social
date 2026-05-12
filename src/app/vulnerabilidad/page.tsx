@@ -23,6 +23,7 @@ import Link from "next/link";
 import { DICCIONARIO } from "@/lib/constants";
 import { Header } from "@/components/Header";
 import { clsx } from "clsx";
+import { apiUrl } from "@/lib/apiBase";
 
 // Custom Donut Chart Component
 const DonutChart = ({ percent, label, value, color = "#8b5cf6" }: { percent: number, label: string, value: string | number, color?: string }) => {
@@ -75,7 +76,7 @@ export default function VulnerabilityPage() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/stats/vulnerability`);
+            const res = await fetch(apiUrl("/api/stats/vulnerability"));
             const json = await res.json();
             if (json.success) setData(json.data);
         } catch (error) {

@@ -13,6 +13,7 @@ import {
 import { Header } from "@/components/Header";
 import { KPICard } from "@/components/KPICard";
 import { DICCIONARIO } from "@/lib/constants";
+import { apiUrl } from "@/lib/apiBase";
 
 export default function EducationPage() {
     const [data, setData] = useState<any>(null);
@@ -21,7 +22,7 @@ export default function EducationPage() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ""}/api/stats/education`);
+            const res = await fetch(apiUrl("/api/stats/education"));
             const json = await res.json();
             if (json.success) setData(json.data);
         } catch (error) {
