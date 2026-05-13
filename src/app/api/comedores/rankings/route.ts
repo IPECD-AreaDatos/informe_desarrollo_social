@@ -9,6 +9,7 @@ const TIPOS: RankingTipo[] = [
   'frescos',
   'responsables',
   'raciones',
+  'raciones_consolidado',
   'becados',
   'refrigerio_comida',
   'carnes',
@@ -20,9 +21,9 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const periodo = searchParams.get('periodo') ?? '';
-    const tipo = (searchParams.get('tipo') ?? 'raciones') as RankingTipo;
+    const tipo = (searchParams.get('tipo') ?? 'raciones_consolidado') as RankingTipo;
     const ambito = searchParams.get('ambito') as Ambito | undefined;
-    const limit = Math.min(parseInt(searchParams.get('limit') ?? '50', 10), 100);
+    const limit = Math.min(parseInt(searchParams.get('limit') ?? '50', 10), 2000);
     const offset = parseInt(searchParams.get('offset') ?? '0', 10);
 
     if (!TIPOS.includes(tipo)) {

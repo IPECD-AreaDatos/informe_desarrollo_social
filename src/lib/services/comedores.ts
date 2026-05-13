@@ -17,10 +17,42 @@ const MESES_SLUG: Record<string, number> = {
   diciembre: 12,
 };
 
+/**
+ * Totales de becados validados para el informe (cuando el resumen en base aún no coincide).
+ * Clave = slug de periodo (`marzo-2026`), igual que el selector de la app.
+ */
+const BECADOS_RESUMEN_OFICIAL: Record<string, { monto: number; cantidad: number }> = {
+  'marzo-2026': { monto: 2_255_691, cantidad: 637 },
+};
+
 /** IDs de comedor en DB son VARCHAR (1, M01, F-16, …). */
 function rowComedorId(v: unknown): string {
   if (v == null) return '';
   return String(v).trim();
+}
+
+/** Montos MySQL (DECIMAL / string / objeto) → número finito. */
+function safeNumber(v: unknown): number {
+  if (v == null || v === '') return 0;
+  const n = typeof v === 'number' ? v : Number(String(v).replace(',', '.'));
+  return Number.isFinite(n) ? n : 0;
+}
+
+/** Peso para reparto de «otros recursos» (misma lógica que ranking cuando no hay monto en PD). */
+function pesoOtrosDesdeBeneficios(
+  gas: { garrafas_10: number; garrafas_15: number; garrafas_45: number },
+  limpieza: Record<string, number>,
+  hayFumigacion: boolean
+): number {
+  let s =
+    safeNumber(gas.garrafas_10) * 10 +
+    safeNumber(gas.garrafas_15) * 15 +
+    safeNumber(gas.garrafas_45) * 45;
+  for (const v of Object.values(limpieza)) {
+    s += safeNumber(v);
+  }
+  if (hayFumigacion) s += 1;
+  return s;
 }
 
 function periodoSlugSortKey(slug: string): [number, number] {
@@ -40,6 +72,7 @@ export type RankingTipo =
   | 'frescos'
   | 'responsables'
   | 'raciones'
+  | 'raciones_consolidado'
   | 'becados'
   | 'refrigerio_comida'
   | 'carnes'
@@ -96,6 +129,10 @@ export interface ComedoresSummary {
   }[];
   /** Conteos desde tipo/subtipo en COMEDOR (p. ej. ETL marzo por DEPENDENCIA) */
   comedores_por_tipo: { tipo: string; subtipo: string | null; cantidad: number }[];
+  /** Solo COMEDOR en zonas CAPITAL */
+  comedores_por_tipo_capital: { tipo: string; subtipo: string | null; cantidad: number }[];
+  /** Interior: agregado por departamento (todas las localidades) */
+  comedores_por_departamento_interior: { departamento: string; cantidad: number }[];
 }
 
 export interface ComedoresRankingRow {
@@ -107,6 +144,12 @@ export interface ComedoresRankingRow {
   valor: number;
   beneficiarios?: number;
   unidad?: string;
+  /** Suma de montos presupuesto antes de convertir a promedio (solo `promedio_beneficiario`). */
+  gasto_total_mensual?: number;
+  /** Parte Teknofood del consolidado de raciones. */
+  monto_teknofood?: number;
+  /** Cantidad de raciones (presupuesto) asociada a Teknofood. */
+  cantidad_raciones?: number;
 }
 
 export interface ComedorDetail {
@@ -421,6 +464,47 @@ async function getSummaryByPeriodo(periodo: string): Promise<ComedoresSummary> {
       if (e?.code !== 'ER_NO_SUCH_TABLE') throw e;
     }
 
+    let porTipoCapital: { tipo: string; subtipo: string | null; cantidad: number }[] = [];
+    try {
+      const [ptc]: any = await connection.execute(
+        `SELECT COALESCE(tc.nombre, 'Sin clasificar') AS tipo,
+                st.nombre AS subtipo,
+                COUNT(DISTINCT c.comedor_id) AS cantidad
+         FROM COMEDOR c
+         JOIN ZONA z ON c.zona_id = z.zona_id
+         LEFT JOIN TIPO_COMEDOR tc ON c.tipo_id = tc.tipo_id
+         LEFT JOIN SUBTIPO_COMEDOR st ON c.subtipo_id = st.subtipo_id
+         WHERE z.ambito = 'CAPITAL'
+         GROUP BY tc.tipo_id, tc.nombre, st.subtipo_id, st.nombre
+         ORDER BY cantidad DESC`
+      );
+      porTipoCapital = (ptc as any[]).map((r: any) => ({
+        tipo: String(r.tipo ?? 'Sin clasificar'),
+        subtipo: r.subtipo != null && String(r.subtipo).trim() !== '' ? String(r.subtipo) : null,
+        cantidad: Number(r.cantidad ?? 0),
+      }));
+    } catch (e: any) {
+      if (e?.code !== 'ER_NO_SUCH_TABLE') throw e;
+    }
+
+    let interiorPorDepartamento: { departamento: string; cantidad: number }[] = [];
+    try {
+      const [idpt]: any = await connection.execute(
+        `SELECT z.departamento AS departamento, COUNT(DISTINCT c.comedor_id) AS cantidad
+         FROM COMEDOR c
+         JOIN ZONA z ON c.zona_id = z.zona_id
+         WHERE z.ambito = 'INTERIOR'
+         GROUP BY z.departamento
+         ORDER BY cantidad DESC`
+      );
+      interiorPorDepartamento = (idpt as any[]).map((r: any) => ({
+        departamento: String(r.departamento ?? ''),
+        cantidad: Number(r.cantidad ?? 0),
+      }));
+    } catch (e: any) {
+      if (e?.code !== 'ER_NO_SUCH_TABLE') throw e;
+    }
+
     const g = gas[0] || {};
     const l = limp[0] || {};
     const f = frescos[0] || {};
@@ -469,8 +553,10 @@ async function getSummaryByPeriodo(periodo: string): Promise<ComedoresSummary> {
       montos: {
         monto_invertido_total: TEKNOFOOD_MONTO_FIJO_ARS,
         monto_invertido_cantidad: Number(montos[0]?.monto_invertido_cantidad ?? 0),
-        becados_monto: Number(montos[0]?.becados_monto ?? 0),
+        becados_monto: BECADOS_RESUMEN_OFICIAL[pSl]?.monto ?? Number(montos[0]?.becados_monto ?? 0),
         becados_cantidad: (() => {
+          const oficial = BECADOS_RESUMEN_OFICIAL[pSl];
+          if (oficial) return oficial.cantidad;
           const m0 = montos[0] as Record<string, unknown> | undefined;
           const num = (k: string) => {
             const raw = m0?.[k] ?? m0?.[k.toLowerCase()];
@@ -544,6 +630,8 @@ async function getSummaryByPeriodo(periodo: string): Promise<ComedoresSummary> {
         ).sort((a, b) => b.cantidad - a.cantidad),
       })),
       comedores_por_tipo: porTipo,
+      comedores_por_tipo_capital: porTipoCapital,
+      comedores_por_departamento_interior: interiorPorDepartamento,
     };
   } finally {
     await close();
@@ -602,7 +690,12 @@ async function getRankings(params: {
              COALESCE(z.ambito, pd.ambito) AS ambito,
              c.responsable_nombre,
              COALESCE(SUM(pd.monto), 0) AS valor,
-             COALESCE(SUM(pd.beneficiarios), 0) AS beneficiarios
+             GREATEST(
+               COALESCE(SUM(pd.beneficiarios), 0),
+               (SELECT COALESCE(SUM(r2.cantidad_beneficiarios), 0) FROM RACION r2
+                WHERE r2.comedor_id = COALESCE(MAX(pd.comedor_id), MAX(c.comedor_id))
+                  AND (TRIM(COALESCE(@cp, '')) = '' OR TRIM(r2.plan_ref) <=> TRIM(CONVERT(@cp USING utf8mb4))))
+             ) AS beneficiarios
            FROM PRESUPUESTO_DEPENDENCIA pd
            LEFT JOIN COMEDOR c ON c.comedor_id = pd.comedor_id
            LEFT JOIN ZONA z ON z.zona_id = c.zona_id
@@ -678,6 +771,82 @@ async function getRankings(params: {
         responsable_nombre: r.responsable_nombre || null,
         valor: Number(r.valor ?? 0),
         beneficiarios: Number(r.beneficiarios ?? 0),
+        unidad: '$',
+      }));
+    }
+
+    if (params.tipo === 'raciones_consolidado') {
+      let rows: any[] = [];
+      try {
+        const [r]: any = await connection.execute(
+          `SELECT
+             COALESCE(pd.comedor_id, c.comedor_id) AS comedor_id,
+             COALESCE(c.nombre, pd.dependencia_nombre) AS nombre,
+             z.nombre AS zona_nombre,
+             COALESCE(z.ambito, pd.ambito) AS ambito,
+             c.responsable_nombre,
+             COALESCE(SUM(
+               CASE
+                 WHEN pd.rubro = 'monto_invertido'
+                  AND (pd.subrubro <=> 'teknofood' OR pd.subrubro IS NULL OR TRIM(COALESCE(pd.subrubro, '')) = '')
+                   THEN pd.monto
+                 WHEN pd.rubro = 'refrigerio_comida' THEN pd.monto
+                 WHEN pd.rubro = 'carnes' THEN pd.monto
+                 ELSE 0
+               END
+             ), 0) AS valor,
+             GREATEST(
+               COALESCE(MAX(pd.beneficiarios), 0),
+               (SELECT COALESCE(SUM(r2.cantidad_beneficiarios), 0) FROM RACION r2
+                WHERE r2.comedor_id = COALESCE(MAX(pd.comedor_id), MAX(c.comedor_id))
+                  AND (TRIM(COALESCE(@cp, '')) = '' OR TRIM(r2.plan_ref) <=> TRIM(CONVERT(@cp USING utf8mb4))))
+             ) AS beneficiarios,
+             COALESCE(SUM(
+               CASE
+                 WHEN pd.rubro = 'monto_invertido'
+                  AND (pd.subrubro <=> 'teknofood' OR pd.subrubro IS NULL OR TRIM(COALESCE(pd.subrubro, '')) = '')
+                   THEN COALESCE(pd.cantidad, 0)
+                 ELSE 0
+               END
+             ), 0) AS cantidad_raciones,
+             COALESCE(SUM(
+               CASE
+                 WHEN pd.rubro = 'monto_invertido'
+                  AND (pd.subrubro <=> 'teknofood' OR pd.subrubro IS NULL OR TRIM(COALESCE(pd.subrubro, '')) = '')
+                   THEN pd.monto
+                 ELSE 0
+               END
+             ), 0) AS monto_teknofood
+           FROM PRESUPUESTO_DEPENDENCIA pd
+           LEFT JOIN COMEDOR c ON c.comedor_id = pd.comedor_id
+           LEFT JOIN ZONA z ON z.zona_id = c.zona_id
+           WHERE (TRIM(COALESCE(@cp, '')) = '' OR CONVERT(TRIM(pd.periodo) USING utf8mb4) COLLATE utf8mb4_unicode_ci <=> @cp)
+             AND (? IS NULL OR COALESCE(z.ambito, pd.ambito) = ?)
+             AND (
+               pd.rubro IN ('refrigerio_comida', 'carnes')
+               OR (pd.rubro = 'monto_invertido' AND (pd.subrubro <=> 'teknofood' OR pd.subrubro IS NULL OR TRIM(COALESCE(pd.subrubro, '')) = ''))
+             )
+           GROUP BY COALESCE(pd.comedor_id, c.comedor_id), COALESCE(c.nombre, pd.dependencia_nombre), z.nombre, COALESCE(z.ambito, pd.ambito), c.responsable_nombre
+           HAVING valor > 0 OR beneficiarios > 0 OR cantidad_raciones > 0
+           ORDER BY valor DESC
+           LIMIT ${limitVal} OFFSET ${offsetVal}`,
+          [params.ambito ?? null, params.ambito ?? null]
+        );
+        rows = r as any[];
+      } catch (e: any) {
+        if (e?.code !== 'ER_NO_SUCH_TABLE') throw e;
+        rows = [];
+      }
+      return (rows as any[]).map((r: any) => ({
+        comedor_id: rowComedorId(r.comedor_id),
+        nombre: r.nombre || 'Sin nombre',
+        zona_nombre: r.zona_nombre || null,
+        ambito: (r.ambito || 'CAPITAL') as Ambito,
+        responsable_nombre: r.responsable_nombre || null,
+        valor: Number(r.valor ?? 0),
+        beneficiarios: Number(r.beneficiarios ?? 0),
+        cantidad_raciones: Number(r.cantidad_raciones ?? 0),
+        monto_teknofood: Number(r.monto_teknofood ?? 0),
         unidad: '$',
       }));
     }
@@ -790,11 +959,15 @@ async function getRankings(params: {
           params.tipo === 'promedio_beneficiario'
             ? 'WHERE (? IS NULL OR COALESCE(z.ambito, pd.ambito) = ?)' + pdPeriodo
             : 'WHERE pd.rubro = ? AND (? IS NULL OR COALESCE(z.ambito, pd.ambito) = ?)' + pdPeriodo;
-        const beneficiariosExpr =
+        const subqBenefRacion = `(SELECT COALESCE(SUM(r2.cantidad_beneficiarios), 0) FROM RACION r2
+                WHERE r2.comedor_id = COALESCE(MAX(pd.comedor_id), MAX(c.comedor_id))
+                  AND (TRIM(COALESCE(@cp, '')) = '' OR TRIM(r2.plan_ref) <=> TRIM(CONVERT(@cp USING utf8mb4))))`;
+        const benefPdPart =
           params.tipo === 'promedio_beneficiario' ? 'COALESCE(MAX(pd.beneficiarios), 0)' : 'COALESCE(SUM(pd.beneficiarios), 0)';
+        const beneficiariosExpr = `GREATEST(${benefPdPart}, ${subqBenefRacion})`;
         const orderExpr =
           params.tipo === 'promedio_beneficiario'
-            ? 'CASE WHEN MAX(pd.beneficiarios) > 0 THEN SUM(pd.monto)/MAX(pd.beneficiarios) ELSE 0 END'
+            ? `CASE WHEN GREATEST(${benefPdPart}, ${subqBenefRacion}) > 0 THEN SUM(pd.monto) / GREATEST(${benefPdPart}, ${subqBenefRacion}) ELSE 0 END`
             : 'valor';
         const [r]: any = await connection.execute(
           `SELECT
@@ -1076,17 +1249,18 @@ async function getRankings(params: {
       }
 
       return (rows as any[]).map((r: any) => {
-        const monto = Number(r.valor ?? 0);
+        const montoTotal = Number(r.valor ?? 0);
         const benef = Number(r.beneficiarios ?? 0);
-        const promedio = benef > 0 ? monto / benef : 0;
+        const promedio = benef > 0 ? montoTotal / benef : 0;
         return {
           comedor_id: rowComedorId(r.comedor_id),
           nombre: r.nombre || 'Sin nombre',
           zona_nombre: r.zona_nombre || null,
           ambito: (r.ambito || 'CAPITAL') as Ambito,
           responsable_nombre: r.responsable_nombre || null,
-          valor: params.tipo === 'promedio_beneficiario' ? promedio : monto,
+          valor: params.tipo === 'promedio_beneficiario' ? promedio : montoTotal,
           beneficiarios: benef,
+          gasto_total_mensual: params.tipo === 'promedio_beneficiario' ? montoTotal : undefined,
           unidad: params.tipo === 'promedio_beneficiario' ? '$/benef.' : '$',
         };
       });
@@ -1180,11 +1354,11 @@ async function getComedorDetail(comedorId: string, periodo: string): Promise<Com
     try {
       const [gc]: any = await connection.execute(
         `SELECT
-           COALESCE(SUM(CASE WHEN rubro = 'monto_invertido' THEN monto ELSE 0 END), 0) AS raciones,
-           COALESCE(SUM(CASE WHEN rubro = 'becados' THEN monto ELSE 0 END), 0) AS becados,
-           COALESCE(SUM(CASE WHEN rubro = 'refrigerio_comida' THEN monto ELSE 0 END), 0) AS refrigerio_comida,
-           COALESCE(SUM(CASE WHEN rubro = 'carnes' THEN monto ELSE 0 END), 0) AS carnes,
-           COALESCE(SUM(CASE WHEN rubro = 'otros_recursos' THEN monto ELSE 0 END), 0) AS otros_recursos
+           COALESCE(SUM(CASE WHEN LOWER(TRIM(rubro)) = 'monto_invertido' THEN monto ELSE 0 END), 0) AS raciones,
+           COALESCE(SUM(CASE WHEN LOWER(TRIM(rubro)) = 'becados' THEN monto ELSE 0 END), 0) AS becados,
+           COALESCE(SUM(CASE WHEN LOWER(TRIM(rubro)) = 'refrigerio_comida' THEN monto ELSE 0 END), 0) AS refrigerio_comida,
+           COALESCE(SUM(CASE WHEN LOWER(TRIM(rubro)) = 'carnes' THEN monto ELSE 0 END), 0) AS carnes,
+           COALESCE(SUM(CASE WHEN LOWER(TRIM(rubro)) = 'otros_recursos' THEN monto ELSE 0 END), 0) AS otros_recursos
          FROM PRESUPUESTO_DEPENDENCIA
          WHERE comedor_id = ?
            AND (TRIM(COALESCE(@cp, '')) = '' OR CONVERT(TRIM(periodo) USING utf8mb4) COLLATE utf8mb4_unicode_ci <=> @cp)`,
@@ -1277,6 +1451,11 @@ async function getComedorDetail(comedorId: string, periodo: string): Promise<Com
       });
     }
 
+    const sumMontoRubroPd = (rubroNorm: string) =>
+      presupuestoDesglose
+        .filter((r) => String(r.rubro ?? '').trim().toLowerCase() === rubroNorm)
+        .reduce((acc, r) => acc + safeNumber(r.monto), 0);
+
     const l = limp[0] || {};
     const fr = frescos[0] || {};
     const limpiezaKeys = [
@@ -1365,7 +1544,68 @@ async function getComedorDetail(comedorId: string, periodo: string): Promise<Com
     const becados = Number(gastoComp[0]?.becados ?? 0);
     const refrigerio_comida = Number(gastoComp[0]?.refrigerio_comida ?? 0);
     const carnesMonto = Number(gastoComp[0]?.carnes ?? 0);
-    const otros_recursos = Number(gastoComp[0]?.otros_recursos ?? 0);
+    const otrosSql = safeNumber(gastoComp[0]?.otros_recursos);
+    const otrosFromPd = sumMontoRubroPd('otros_recursos');
+    let otros_recursos = Math.max(otrosSql, otrosFromPd);
+    if (otros_recursos <= 0 && pDet) {
+      const pesoLoc = pesoOtrosDesdeBeneficios(
+        { garrafas_10: g10, garrafas_15: g15, garrafas_45: g45 },
+        limpieza,
+        fumigacion
+      );
+      if (pesoLoc > 0) {
+        try {
+          const [tm]: any = await connection.execute(
+            `SELECT COALESCE((
+               SELECT pr.monto_total FROM PRESUPUESTO_RESUMEN pr
+               WHERE pr.rubro = 'otros_recursos' AND TRIM(COALESCE(pr.subrubro, '')) = 'limpieza'
+                 AND (TRIM(COALESCE(@cp, '')) = '' OR CONVERT(TRIM(pr.periodo) USING utf8mb4) COLLATE utf8mb4_unicode_ci <=> @cp)
+               ORDER BY pr.resumen_id DESC LIMIT 1
+             ), 0) +
+             COALESCE((
+               SELECT pr.monto_total FROM PRESUPUESTO_RESUMEN pr
+               WHERE pr.rubro = 'otros_recursos' AND TRIM(COALESCE(pr.subrubro, '')) = 'fumigacion'
+                 AND (TRIM(COALESCE(@cp, '')) = '' OR CONVERT(TRIM(pr.periodo) USING utf8mb4) COLLATE utf8mb4_unicode_ci <=> @cp)
+               ORDER BY pr.resumen_id DESC LIMIT 1
+             ), 0) +
+             COALESCE((
+               SELECT pr.monto_total FROM PRESUPUESTO_RESUMEN pr
+               WHERE pr.rubro = 'otros_recursos' AND TRIM(COALESCE(pr.subrubro, '')) = 'gas'
+                 AND (TRIM(COALESCE(@cp, '')) = '' OR CONVERT(TRIM(pr.periodo) USING utf8mb4) COLLATE utf8mb4_unicode_ci <=> @cp)
+               ORDER BY pr.resumen_id DESC LIMIT 1
+             ), 0) AS t`
+          );
+          const totalM = safeNumber(tm[0]?.t);
+          if (totalM > 0) {
+            const [sp]: any = await connection.execute(
+              `SELECT COALESCE(SUM(
+                 COALESCE(g.garrafas_10kg, 0) * 10 + COALESCE(g.garrafas_15kg, 0) * 15 + COALESCE(g.garrafas_45kg, 0) * 45
+                 + COALESCE(l.lavandina_4lt, 0) + COALESCE(l.detergente_45lt, 0) + COALESCE(l.desengrasante_5lt, 0)
+                 + COALESCE(l.trapo_piso, 0) + COALESCE(l.trapo_rejilla, 0) + COALESCE(l.virulana, 0) + COALESCE(l.esponja, 0)
+                 + COALESCE(l.escobillon, 0) + COALESCE(l.escurridor, 0)
+                 + CASE WHEN fum.comedor_id IS NOT NULL THEN 1 ELSE 0 END
+               ), 0) AS suma_pesos
+               FROM COMEDOR c
+               INNER JOIN ZONA z ON z.zona_id = c.zona_id
+               LEFT JOIN BENEFICIO_GAS g ON g.comedor_id = c.comedor_id
+                 AND (TRIM(COALESCE(@cp, '')) = '' OR CONVERT(TRIM(g.periodo) USING utf8mb4) COLLATE utf8mb4_unicode_ci <=> @cp)
+               LEFT JOIN BENEFICIO_LIMPIEZA l ON l.comedor_id = c.comedor_id
+                 AND (TRIM(COALESCE(@cp, '')) = '' OR CONVERT(TRIM(l.periodo) USING utf8mb4) COLLATE utf8mb4_unicode_ci <=> @cp)
+               LEFT JOIN (
+                 SELECT DISTINCT comedor_id FROM BENEFICIO_FUMIGACION
+                 WHERE (TRIM(COALESCE(@cp, '')) = '' OR CONVERT(TRIM(periodo) USING utf8mb4) COLLATE utf8mb4_unicode_ci <=> @cp)
+               ) fum ON fum.comedor_id = c.comedor_id`
+            );
+            const sumPesos = safeNumber(sp[0]?.suma_pesos);
+            if (sumPesos > 0) {
+              otros_recursos = (totalM * pesoLoc) / sumPesos;
+            }
+          }
+        } catch (e: any) {
+          if (e?.code !== 'ER_NO_SUCH_TABLE') throw e;
+        }
+      }
+    }
     const gastoTotalComedor = raciones + becados + refrigerio_comida + carnesMonto + otros_recursos;
 
     return {

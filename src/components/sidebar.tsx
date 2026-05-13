@@ -146,11 +146,31 @@ export function Sidebar() {
             </nav>
 
             <div className={clsx("mt-auto pb-4", compact ? "p-2" : "p-6 w-full")}>
-                <div className={clsx("flex justify-center", compact ? "" : "w-full items-center px-4 py-2")}>
+                <div
+                    className={clsx(
+                        "flex items-center justify-center",
+                        compact ? "flex-col gap-2" : "flex-row w-full gap-2 px-2 py-2"
+                    )}
+                >
                     <img
-                        src={`${APP_BASE_PATH}/IMI.png`}
-                        alt="IMI"
-                        className={clsx("object-contain", compact ? "w-10 h-10" : "w-full max-w-[180px] h-auto max-h-[70px]")}
+                        src={`${APP_BASE_PATH}/Logo_desarrollo_social_2.png`}
+                        alt="Ministerio de Desarrollo Social Corrientes"
+                        className={clsx(
+                            "object-contain shrink-0",
+                            compact
+                                ? "w-full max-w-[48px] h-auto max-h-[32px]"
+                                : "h-auto max-h-[56px] w-auto max-w-[min(50%,124px)]"
+                        )}
+                    />
+                    <img
+                        src={`${APP_BASE_PATH}/IMI2.png`}
+                        alt="Instituto de Modernización e Innovación"
+                        className={clsx(
+                            "object-contain shrink-0",
+                            compact
+                                ? "w-full max-w-[48px] h-auto max-h-[28px]"
+                                : "h-auto max-h-[56px] w-auto max-w-[min(50%,100px)]"
+                        )}
                     />
                 </div>
             </div>

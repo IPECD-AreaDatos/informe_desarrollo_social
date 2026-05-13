@@ -80,7 +80,9 @@ export function KPICard({
                             </p>
                         )}
                         {noteText && (
-                            <p className="text-xs font-semibold text-slate-700 mt-1.5 leading-snug">{noteText}</p>
+                            <p className="text-[11px] font-semibold text-slate-500 mt-1.5 leading-snug whitespace-pre-line">
+                                {noteText}
+                            </p>
                         )}
                     </div>
                 )}
