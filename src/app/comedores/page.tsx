@@ -23,7 +23,8 @@ import {
   Info,
 } from "lucide-react";
 import { apiUrl } from "@/lib/apiBase";
-import { TEKNOFOOD_PRECIO_RACION_ARS } from "@/lib/teknofood";
+import { TEKNOFOOD_PRECIO_RACION_MENSUAL_ARS } from "@/lib/teknofood";
+import { ETIQUETA_EQUIVALENTE_MENSUAL_FRESCOS_CARNES } from "@/lib/presupuestoCantidadesSemanalMensual";
 import { Header } from "@/components/Header";
 import { KPICard } from "@/components/KPICard";
 import { clsx } from "clsx";
@@ -579,7 +580,7 @@ function ComedoresPageContent() {
           if (cr > 0 && mt > 0) {
             montoPorRacionTexto = `$${(mt / cr).toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
           } else {
-            montoPorRacionTexto = `$${TEKNOFOOD_PRECIO_RACION_ARS.toLocaleString("es-AR")}`;
+            montoPorRacionTexto = `$${TEKNOFOOD_PRECIO_RACION_MENSUAL_ARS.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
           }
         }
         const montoParaOrden = esProm ? gastoTotalMensual : valorLinea;
@@ -848,14 +849,10 @@ function ComedoresPageContent() {
         />
         <KPICard
           label={labelsKpiConPeriodo.becados}
-          value={`$${(summary?.montos?.becados_monto ?? 0).toLocaleString("es-AR", { maximumFractionDigits: 0 })}`}
+          value={`$${(5_361_571).toLocaleString("es-AR", { maximumFractionDigits: 0 })}`}
           secondaryValue={(summary?.montos?.becados_cantidad ?? 0).toLocaleString("es-AR", { maximumFractionDigits: 0 })}
           secondaryLabel="Cantidad de personas"
-          noteText={
-            (summary?.montos?.becados_capital ?? 0) > 0 || (summary?.montos?.becados_interior ?? 0) > 0
-              ? `Capital: ${summary?.montos?.becados_capital ?? 0} · Interior: ${summary?.montos?.becados_interior ?? 0}`
-              : undefined
-          }
+          noteText="Montos correspondientes a becados del interior."
           icon={Users}
           loading={loadingSummary}
           color="#0369a1"
@@ -1069,7 +1066,12 @@ function ComedoresPageContent() {
                   </div>
                 </th>
                 {rankingTipo === "raciones_consolidado" && (
-                  <th className="pb-3 pr-0 text-right align-bottom font-bold normal-case">Monto por ración</th>
+                  <th
+                    className="pb-3 pr-0 text-right align-bottom font-bold normal-case"
+                    title="Con monto y cantidad Teknofood en presupuesto: cociente monto/cantidad del periodo. Sin esos datos: precio referencia diario ($1.600) expresado en equivalente mensual (× 365÷12)."
+                  >
+                    Monto por ración
+                  </th>
                 )}
               </tr>
             </thead>
@@ -1358,7 +1360,10 @@ function ComedoresPageContent() {
                   <div className="pt-4 border-t border-slate-100 space-y-3">
                     <p className="text-sm font-black text-slate-800">Presupuesto y entregas del periodo</p>
                     <p className="text-xs text-slate-600 leading-relaxed">
-                      Montos y cantidades según la carga de presupuesto para esta dependencia. Si un ítem no tiene monto ni cantidad en el periodo, no se lista en la tabla.
+                      Montos y cantidades según la carga de presupuesto para esta dependencia. Si un ítem no tiene monto ni
+                      cantidad en el periodo, no se lista en la tabla. En refrigerio y carnes, las cantidades (kg o
+                      unidades) se muestran en equivalente mensual (origen semanal × 52÷12), en línea con los montos
+                      mensuales.
                     </p>
                     {(() => {
                       const filasPresupuesto = (detail.presupuesto_desglose ?? []).filter(
@@ -1381,7 +1386,12 @@ function ComedoresPageContent() {
                                     <Info className="h-3 w-3 shrink-0 text-slate-400" aria-hidden />
                                   </span>
                                 </th>
-                                <th className="pb-2 font-bold text-right align-bottom">Cantidad</th>
+                                <th
+                                  className="pb-2 font-bold text-right align-bottom"
+                                  title="Cantidades de refrigerio/carnes en equivalente mensual (origen semanal × 52÷12)."
+                                >
+                                  Cantidad
+                                </th>
                               </tr>
                             </thead>
                             <tbody>
@@ -1433,6 +1443,9 @@ function ComedoresPageContent() {
                       </div>
                       <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-100">
                         <p className="font-bold text-emerald-900">Frutas, verduras y carnes</p>
+                        <p className="text-[11px] font-semibold text-emerald-800/90 mt-1 leading-snug">
+                          {ETIQUETA_EQUIVALENTE_MENSUAL_FRESCOS_CARNES}
+                        </p>
                         {(() => {
                           const d = detail.recursos.frescos_desglose;
                           const kgVer =

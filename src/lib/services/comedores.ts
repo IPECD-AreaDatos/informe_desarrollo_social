@@ -1,5 +1,9 @@
 import { getComedoresConnection } from '../db';
 import { TEKNOFOOD_MONTO_FIJO_ARS } from '../teknofood';
+import {
+  cantidadSemanalAMensual,
+  escalarFrescosDesgloseSemanalAMensual,
+} from '../presupuestoCantidadesSemanalMensual';
 
 /** Orden cronológico para slugs tipo `marzo-2026` (no lexicográfico). */
 const MESES_SLUG: Record<string, number> = {
@@ -36,6 +40,13 @@ function safeNumber(v: unknown): number {
   if (v == null || v === '') return 0;
   const n = typeof v === 'number' ? v : Number(String(v).replace(',', '.'));
   return Number.isFinite(n) ? n : 0;
+}
+
+/** Cantidades semanales de refrigerio/carnes en PD → equivalente mensual (alineado a montos mensuales). */
+function escalarCantidadPresupuestoDepSemanalMensual(rubro: string, cantidad: number): number {
+  const r = String(rubro ?? '').trim().toLowerCase();
+  if (r !== 'refrigerio_comida' && r !== 'carnes') return cantidad;
+  return cantidadSemanalAMensual(cantidad);
 }
 
 /** Peso para reparto de «otros recursos» (misma lógica que ranking cuando no hay monto en PD). */
@@ -93,7 +104,9 @@ export interface ComedoresSummary {
     gas_desglose: { garrafas_10: number; garrafas_15: number; garrafas_45: number };
     limpieza_total_articulos: number;
     limpieza_desglose: Record<string, number>;
+    /** Kg totales frescos/carnes equivalente mensual (origen semanal × 52/12). */
     frescos_kg: number;
+    /** Desglose kg/unidades equivalente mensual (origen semanal × 52/12). */
     frescos_desglose: Record<string, number>;
     fumigacion_count: number;
   };
@@ -106,11 +119,12 @@ export interface ComedoresSummary {
     becados_capital: number;
     becados_interior: number;
     refrigerio_comida_monto: number;
-    /** Presupuesto marzo: kg de verduras (sin frutas en unidades) */
+    /** Kg de verduras equivalente mensual (origen semanal × 52/12). */
     refrigerio_verduras_kg: number;
-    /** Presupuesto marzo: unidades de frutas */
+    /** Unidades de frutas equivalente mensual (origen semanal × 52/12). */
     refrigerio_frutas_unidades: number;
     carnes_monto: number;
+    /** Kg de carnes equivalente mensual (origen semanal × 52/12). */
     carnes_cantidad: number;
     otros_recursos_monto: number;
     /** Presupuesto marzo: unidades de artículos de limpieza */
@@ -174,6 +188,7 @@ export interface ComedorDetail {
     gas: { garrafas_10: number; garrafas_15: number; garrafas_45: number };
     limpieza: Record<string, number>;
     frescos_kg: number;
+    /** Kg y unidades en equivalente mensual (origen semanal × 52/12). */
     frescos_desglose: Record<string, number>;
     fumigacion: boolean;
   };
@@ -188,7 +203,7 @@ export interface ComedorDetail {
     /** Suma de todos los montos en PRESUPUESTO_DEPENDENCIA (todas las dependencias) */
     gasto_total_global: number;
   };
-  /** Líneas de presupuesto por rubro/subrubro (todos los programas cargados en ETL) */
+  /** Líneas de presupuesto por rubro/subrubro (todos los programas cargados en ETL). Cantidades de `refrigerio_comida` y `carnes` en equivalente mensual (origen semanal × 52/12). */
   presupuesto_desglose?: {
     rubro: string;
     subrubro: string | null;
@@ -508,6 +523,26 @@ async function getSummaryByPeriodo(periodo: string): Promise<ComedoresSummary> {
     const g = gas[0] || {};
     const l = limp[0] || {};
     const f = frescos[0] || {};
+    const frescosDesgloseMensual = escalarFrescosDesgloseSemanalAMensual({
+      cebolla_kg: Number(f.cebolla_kg ?? 0),
+      zanahoria_kg: Number(f.zanahoria_kg ?? 0),
+      zapallo_kg: Number(f.zapallo_kg ?? 0),
+      papa_kg: Number(f.papa_kg ?? 0),
+      acelga_kg: Number(f.acelga_kg ?? 0),
+      frutas_unidades: Number(f.frutas_unidades ?? 0),
+      carne_vacuna_kg: Number(f.carne_vacuna_kg ?? 0),
+      pollo_kg: Number(f.pollo_kg ?? 0),
+      cerdo_kg: Number(f.cerdo_kg ?? 0),
+    });
+    const frescosKgMensual =
+      frescosDesgloseMensual.cebolla_kg +
+      frescosDesgloseMensual.zanahoria_kg +
+      frescosDesgloseMensual.zapallo_kg +
+      frescosDesgloseMensual.papa_kg +
+      frescosDesgloseMensual.acelga_kg +
+      frescosDesgloseMensual.carne_vacuna_kg +
+      frescosDesgloseMensual.pollo_kg +
+      frescosDesgloseMensual.cerdo_kg;
     return {
       total_comedores: totalRows[0]?.total ?? 0,
       por_ambito: (porAmbito as any[]).map((r: any) => ({ ambito: r.ambito, cantidad: r.cantidad })),
@@ -536,18 +571,8 @@ async function getSummaryByPeriodo(periodo: string): Promise<ComedoresSummary> {
           escobillon: Number(l.escobillon ?? 0),
           escurridor: Number(l.escurridor ?? 0),
         },
-        frescos_kg: Number(f.kg ?? 0),
-        frescos_desglose: {
-          cebolla_kg: Number(f.cebolla_kg ?? 0),
-          zanahoria_kg: Number(f.zanahoria_kg ?? 0),
-          zapallo_kg: Number(f.zapallo_kg ?? 0),
-          papa_kg: Number(f.papa_kg ?? 0),
-          acelga_kg: Number(f.acelga_kg ?? 0),
-          frutas_unidades: Number(f.frutas_unidades ?? 0),
-          carne_vacuna_kg: Number(f.carne_vacuna_kg ?? 0),
-          pollo_kg: Number(f.pollo_kg ?? 0),
-          cerdo_kg: Number(f.cerdo_kg ?? 0),
-        },
+        frescos_kg: frescosKgMensual,
+        frescos_desglose: frescosDesgloseMensual,
         fumigacion_count: Number(fum[0]?.n ?? 0),
       },
       montos: {
@@ -580,19 +605,19 @@ async function getSummaryByPeriodo(periodo: string): Promise<ComedoresSummary> {
         refrigerio_comida_monto: Number(montos[0]?.refrigerio_comida_monto ?? 0),
         refrigerio_verduras_kg: (() => {
           const fromPr = Number(montos[0]?.refrigerio_verduras_kg ?? 0);
-          if (fromPr > 0) return fromPr;
+          if (fromPr > 0) return cantidadSemanalAMensual(fromPr);
           return (
-            Number(f.cebolla_kg ?? 0) +
-            Number(f.zanahoria_kg ?? 0) +
-            Number(f.zapallo_kg ?? 0) +
-            Number(f.papa_kg ?? 0) +
-            Number(f.acelga_kg ?? 0)
+            frescosDesgloseMensual.cebolla_kg +
+            frescosDesgloseMensual.zanahoria_kg +
+            frescosDesgloseMensual.zapallo_kg +
+            frescosDesgloseMensual.papa_kg +
+            frescosDesgloseMensual.acelga_kg
           );
         })(),
         refrigerio_frutas_unidades: (() => {
           const fromPr = Number(montos[0]?.refrigerio_frutas_unidades ?? 0);
-          if (fromPr > 0) return fromPr;
-          return Number(f.frutas_unidades ?? 0);
+          if (fromPr > 0) return cantidadSemanalAMensual(fromPr);
+          return frescosDesgloseMensual.frutas_unidades;
         })(),
         carnes_monto: Number(montos[0]?.carnes_monto ?? 0),
         carnes_cantidad: (() => {
@@ -600,8 +625,14 @@ async function getSummaryByPeriodo(periodo: string): Promise<ComedoresSummary> {
           const meat =
             Number(f.carne_vacuna_kg ?? 0) + Number(f.pollo_kg ?? 0) + Number(f.cerdo_kg ?? 0);
           if (c > 500000 || c < 0) c = 0;
-          if (c === 0 && meat > 0 && meat < 500000) return meat;
-          return c;
+          if (c === 0 && meat > 0 && meat < 500000) {
+            return (
+              frescosDesgloseMensual.carne_vacuna_kg +
+              frescosDesgloseMensual.pollo_kg +
+              frescosDesgloseMensual.cerdo_kg
+            );
+          }
+          return cantidadSemanalAMensual(c);
         })(),
         otros_recursos_monto: Number(montos[0]?.otros_recursos_monto ?? 0),
         otros_limpieza_cantidad: (() => {
@@ -915,7 +946,7 @@ async function getRankings(params: {
         zona_nombre: r.zona_nombre,
         ambito: r.ambito,
         responsable_nombre: r.responsable_nombre,
-        valor: Number(r.valor),
+        valor: cantidadSemanalAMensual(Number(r.valor)),
         unidad: 'kg',
       }));
     }
@@ -1450,6 +1481,10 @@ async function getComedorDetail(comedorId: string, periodo: string): Promise<Com
         return { ...row, monto: row.monto * kTek };
       });
     }
+    presupuestoDesglose = presupuestoDesglose.map((row) => ({
+      ...row,
+      cantidad: escalarCantidadPresupuestoDepSemanalMensual(row.rubro, row.cantidad),
+    }));
 
     const sumMontoRubroPd = (rubroNorm: string) =>
       presupuestoDesglose
@@ -1517,7 +1552,7 @@ async function getComedorDetail(comedorId: string, periodo: string): Promise<Com
       if (k) fromPresup[k] = Number((row as any).cantidad ?? 0);
     }
     const hasPresupFrescos = Object.values(fromPresup).some((v) => v > 0);
-    const frescosDesglose: Record<string, number> = {
+    const frescosDesglose: Record<string, number> = escalarFrescosDesgloseSemanalAMensual({
       cebolla_kg: hasPresupFrescos ? Number(fromPresup.cebolla_kg ?? 0) : Number(fr.cebolla_kg ?? 0),
       zanahoria_kg: hasPresupFrescos ? Number(fromPresup.zanahoria_kg ?? 0) : Number(fr.zanahoria_kg ?? 0),
       zapallo_kg: hasPresupFrescos ? Number(fromPresup.zapallo_kg ?? 0) : Number(fr.zapallo_kg ?? 0),
@@ -1527,7 +1562,7 @@ async function getComedorDetail(comedorId: string, periodo: string): Promise<Com
       carne_vacuna_kg: hasPresupFrescos ? Number(fromPresup.carne_vacuna_kg ?? 0) : Number(fr.carne_vacuna_kg ?? 0),
       pollo_kg: hasPresupFrescos ? Number(fromPresup.pollo_kg ?? 0) : Number(fr.pollo_kg ?? 0),
       cerdo_kg: hasPresupFrescos ? Number(fromPresup.cerdo_kg ?? 0) : Number(fr.cerdo_kg ?? 0),
-    };
+    });
     const kgVerduras =
       frescosDesglose.cebolla_kg +
       frescosDesglose.zanahoria_kg +
