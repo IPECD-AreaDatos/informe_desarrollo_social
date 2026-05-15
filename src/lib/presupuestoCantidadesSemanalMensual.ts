@@ -1,9 +1,9 @@
 /**
  * Kilogramos y unidades de frutas/verduras/carnes cargados como **semanales**
  * se expresan en **equivalente mensual** para alinearlos a montos presupuestarios mensuales.
- * Factor = semanas promedio por mes en el año (52 ÷ 12).
+ * Factor = 4 semanas por mes.
  */
-export const SEMANAL_A_MENSUAL_FACTOR = 52 / 12;
+export const SEMANAL_A_MENSUAL_FACTOR = 4;
 
 export function cantidadSemanalAMensual(n: number): number {
   const x = Number(n);
@@ -33,4 +33,4 @@ export function escalarFrescosDesgloseSemanalAMensual(d: Record<string, number>)
 }
 
 export const ETIQUETA_EQUIVALENTE_MENSUAL_FRESCOS_CARNES =
-  "Cantidades en equivalente mensual (origen semanal × 52÷12), alineadas a montos mensuales.";
+  "Cantidades en equivalente mensual (origen semanal × 4 semanas), alineadas a montos mensuales.";

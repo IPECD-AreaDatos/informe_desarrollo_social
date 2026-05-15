@@ -7,6 +7,9 @@ export const TEKNOFOOD_MONTO_FIJO_ARS = 2_118_950_400;
  */
 export const TEKNOFOOD_PRECIO_RACION_ARS = 1600;
 
+/** Días por mes para monto Teknofood en ranking (raciones × precio diario × 30). */
+export const TEKNOFOOD_DIAS_MES_RACION = 30;
+
 /** Promedio de días por mes (365/12) para expresar un valor diario en equivalente mensual. */
 export const TEKNOFOOD_DIAS_PROMEDIO_POR_MES = 365 / 12;
 

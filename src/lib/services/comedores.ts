@@ -4,6 +4,13 @@ import {
   cantidadSemanalAMensual,
   escalarFrescosDesgloseSemanalAMensual,
 } from '../presupuestoCantidadesSemanalMensual';
+import { loadRankingOtrosRecursosForPeriodo } from '../rankingOtrosRecursosCsv';
+import { loadRankingPromedioBeneficiarioForPeriodo } from '../rankingPromedioBeneficiarioCsv';
+import {
+  applyTeknofoodCsvToPresupuestoDesglose,
+  loadRankingRacionesForPeriodo,
+  lookupTeknofoodPadronForComedor,
+} from '../rankingRacionesCsv';
 
 /** Orden cronológico para slugs tipo `marzo-2026` (no lexicográfico). */
 const MESES_SLUG: Record<string, number> = {
@@ -104,9 +111,9 @@ export interface ComedoresSummary {
     gas_desglose: { garrafas_10: number; garrafas_15: number; garrafas_45: number };
     limpieza_total_articulos: number;
     limpieza_desglose: Record<string, number>;
-    /** Kg totales frescos/carnes equivalente mensual (origen semanal × 52/12). */
+    /** Kg totales frescos/carnes equivalente mensual (origen semanal × 4 semanas). */
     frescos_kg: number;
-    /** Desglose kg/unidades equivalente mensual (origen semanal × 52/12). */
+    /** Desglose kg/unidades equivalente mensual (origen semanal × 4 semanas). */
     frescos_desglose: Record<string, number>;
     fumigacion_count: number;
   };
@@ -119,12 +126,12 @@ export interface ComedoresSummary {
     becados_capital: number;
     becados_interior: number;
     refrigerio_comida_monto: number;
-    /** Kg de verduras equivalente mensual (origen semanal × 52/12). */
+    /** Kg de verduras equivalente mensual (origen semanal × 4 semanas). */
     refrigerio_verduras_kg: number;
-    /** Unidades de frutas equivalente mensual (origen semanal × 52/12). */
+    /** Unidades de frutas equivalente mensual (origen semanal × 4 semanas). */
     refrigerio_frutas_unidades: number;
     carnes_monto: number;
-    /** Kg de carnes equivalente mensual (origen semanal × 52/12). */
+    /** Kg de carnes equivalente mensual (origen semanal × 4 semanas). */
     carnes_cantidad: number;
     otros_recursos_monto: number;
     /** Presupuesto marzo: unidades de artículos de limpieza */
@@ -188,7 +195,7 @@ export interface ComedorDetail {
     gas: { garrafas_10: number; garrafas_15: number; garrafas_45: number };
     limpieza: Record<string, number>;
     frescos_kg: number;
-    /** Kg y unidades en equivalente mensual (origen semanal × 52/12). */
+    /** Kg y unidades en equivalente mensual (origen semanal × 4 semanas). */
     frescos_desglose: Record<string, number>;
     fumigacion: boolean;
   };
@@ -203,7 +210,7 @@ export interface ComedorDetail {
     /** Suma de todos los montos en PRESUPUESTO_DEPENDENCIA (todas las dependencias) */
     gasto_total_global: number;
   };
-  /** Líneas de presupuesto por rubro/subrubro (todos los programas cargados en ETL). Cantidades de `refrigerio_comida` y `carnes` en equivalente mensual (origen semanal × 52/12). */
+  /** Líneas de presupuesto por rubro/subrubro (todos los programas cargados en ETL). Cantidades de `refrigerio_comida` y `carnes` en equivalente mensual (origen semanal × 4 semanas). */
   presupuesto_desglose?: {
     rubro: string;
     subrubro: string | null;
@@ -669,6 +676,192 @@ async function getSummaryByPeriodo(periodo: string): Promise<ComedoresSummary> {
   }
 }
 
+function inferAmbitoDesdeZonaCsv(zona: string | null | undefined): Ambito {
+  if (String(zona ?? '').trim().toUpperCase() === 'CAPITAL') return 'CAPITAL';
+  return 'INTERIOR';
+}
+
+/** Ranking raciones desde CSV mensuales (Teknofood + frescos carne + frescos verduras/frutas). */
+async function getRankingsRacionesConsolidadoFromCsv(params: {
+  periodo: string;
+  ambito?: Ambito;
+  limit?: number;
+  offset?: number;
+}): Promise<ComedoresRankingRow[] | null> {
+  const csvRows = loadRankingRacionesForPeriodo(params.periodo);
+  if (!csvRows?.length) return null;
+
+  const { connection, close } = await getComedoresConnection();
+  const limitVal = Math.min(Math.max(0, params.limit ?? 50), 2000);
+  const offsetVal = Math.max(0, params.offset ?? 0);
+
+  try {
+    const [comedores]: any = await connection.execute(
+      `SELECT c.comedor_id, c.numero_oficial, c.nombre, z.nombre AS zona_nombre,
+              z.ambito, c.responsable_nombre
+       FROM COMEDOR c
+       LEFT JOIN ZONA z ON c.zona_id = z.zona_id`
+    );
+    const byComedorId = new Map<string, Record<string, unknown>>();
+    const byNumeroOficial = new Map<string, Record<string, unknown>>();
+    for (const c of comedores as Record<string, unknown>[]) {
+      const id = rowComedorId(c.comedor_id);
+      if (id) byComedorId.set(id, c);
+      const num = rowComedorId(c.numero_oficial);
+      if (num) byNumeroOficial.set(num, c);
+    }
+
+    const merged: ComedoresRankingRow[] = [];
+    for (const row of csvRows) {
+      const pid = row.padronId;
+      const c = byComedorId.get(pid) ?? byNumeroOficial.get(pid);
+      const ambito = (
+        c?.ambito ? String(c.ambito) : inferAmbitoDesdeZonaCsv(row.zonaCsv)
+      ) as Ambito;
+      if (params.ambito && ambito !== params.ambito) continue;
+
+      merged.push({
+        comedor_id: c ? rowComedorId(c.comedor_id) : pid,
+        nombre: String(c?.nombre ?? row.nombreDependencia ?? 'Sin nombre').trim() || 'Sin nombre',
+        zona_nombre: c?.zona_nombre != null ? String(c.zona_nombre) : null,
+        ambito,
+        responsable_nombre: c?.responsable_nombre != null ? String(c.responsable_nombre) : null,
+        valor: row.montoTotalMensual,
+        beneficiarios: 0,
+        cantidad_raciones: row.cantidadRaciones,
+        monto_teknofood: row.montoTeknofood,
+        unidad: '$',
+      });
+    }
+
+    merged.sort((a, b) => b.valor - a.valor);
+    return merged.slice(offsetVal, offsetVal + limitVal);
+  } finally {
+    await close();
+  }
+}
+
+/** Ranking otros recursos desde CSV (gas + limpieza + fumigación; beneficiarios = Teknofood). */
+async function getRankingsOtrosRecursosFromCsv(params: {
+  periodo: string;
+  ambito?: Ambito;
+  limit?: number;
+  offset?: number;
+}): Promise<ComedoresRankingRow[] | null> {
+  const csvRows = loadRankingOtrosRecursosForPeriodo(params.periodo);
+  if (!csvRows?.length) return null;
+
+  const { connection, close } = await getComedoresConnection();
+  const limitVal = Math.min(Math.max(0, params.limit ?? 50), 2000);
+  const offsetVal = Math.max(0, params.offset ?? 0);
+
+  try {
+    const [comedores]: any = await connection.execute(
+      `SELECT c.comedor_id, c.numero_oficial, c.nombre, z.nombre AS zona_nombre,
+              z.ambito, c.responsable_nombre
+       FROM COMEDOR c
+       LEFT JOIN ZONA z ON c.zona_id = z.zona_id`
+    );
+    const byComedorId = new Map<string, Record<string, unknown>>();
+    const byNumeroOficial = new Map<string, Record<string, unknown>>();
+    for (const c of comedores as Record<string, unknown>[]) {
+      const id = rowComedorId(c.comedor_id);
+      if (id) byComedorId.set(id, c);
+      const num = rowComedorId(c.numero_oficial);
+      if (num) byNumeroOficial.set(num, c);
+    }
+
+    const merged: ComedoresRankingRow[] = [];
+    for (const row of csvRows) {
+      const pid = row.padronId;
+      const c = byComedorId.get(pid) ?? byNumeroOficial.get(pid);
+      const ambito = (
+        c?.ambito ? String(c.ambito) : inferAmbitoDesdeZonaCsv(row.zonaCsv)
+      ) as Ambito;
+      if (params.ambito && ambito !== params.ambito) continue;
+
+      merged.push({
+        comedor_id: c ? rowComedorId(c.comedor_id) : pid,
+        nombre: String(c?.nombre ?? row.nombreDependencia ?? 'Sin nombre').trim() || 'Sin nombre',
+        zona_nombre: c?.zona_nombre != null ? String(c.zona_nombre) : null,
+        ambito,
+        responsable_nombre: c?.responsable_nombre != null ? String(c.responsable_nombre) : null,
+        valor: row.montoTotalMensual,
+        beneficiarios: row.cantidadBeneficiarios,
+        cantidad_raciones: row.cantidadBeneficiarios,
+        unidad: '$',
+      });
+    }
+
+    merged.sort((a, b) => b.valor - a.valor);
+    return merged.slice(offsetVal, offsetVal + limitVal);
+  } finally {
+    await close();
+  }
+}
+
+/** Promedio por beneficiario: monto total = raciones (CSV) + otros recursos (CSV). */
+async function getRankingsPromedioBeneficiarioFromCsv(params: {
+  periodo: string;
+  ambito?: Ambito;
+  limit?: number;
+  offset?: number;
+}): Promise<ComedoresRankingRow[] | null> {
+  const csvRows = loadRankingPromedioBeneficiarioForPeriodo(params.periodo);
+  if (!csvRows?.length) return null;
+
+  const { connection, close } = await getComedoresConnection();
+  const limitVal = Math.min(Math.max(0, params.limit ?? 50), 2000);
+  const offsetVal = Math.max(0, params.offset ?? 0);
+
+  try {
+    const [comedores]: any = await connection.execute(
+      `SELECT c.comedor_id, c.numero_oficial, c.nombre, z.nombre AS zona_nombre,
+              z.ambito, c.responsable_nombre
+       FROM COMEDOR c
+       LEFT JOIN ZONA z ON c.zona_id = z.zona_id`
+    );
+    const byComedorId = new Map<string, Record<string, unknown>>();
+    const byNumeroOficial = new Map<string, Record<string, unknown>>();
+    for (const c of comedores as Record<string, unknown>[]) {
+      const id = rowComedorId(c.comedor_id);
+      if (id) byComedorId.set(id, c);
+      const num = rowComedorId(c.numero_oficial);
+      if (num) byNumeroOficial.set(num, c);
+    }
+
+    const merged: ComedoresRankingRow[] = [];
+    for (const row of csvRows) {
+      const pid = row.padronId;
+      const c = byComedorId.get(pid) ?? byNumeroOficial.get(pid);
+      const ambito = (
+        c?.ambito ? String(c.ambito) : inferAmbitoDesdeZonaCsv(row.zonaCsv)
+      ) as Ambito;
+      if (params.ambito && ambito !== params.ambito) continue;
+
+      const gastoTotal = row.montoTotalMensual;
+      const benef = row.cantidadBeneficiarios;
+      merged.push({
+        comedor_id: c ? rowComedorId(c.comedor_id) : pid,
+        nombre: String(c?.nombre ?? row.nombreDependencia ?? 'Sin nombre').trim() || 'Sin nombre',
+        zona_nombre: c?.zona_nombre != null ? String(c.zona_nombre) : null,
+        ambito,
+        responsable_nombre: c?.responsable_nombre != null ? String(c.responsable_nombre) : null,
+        valor: gastoTotal,
+        gasto_total_mensual: gastoTotal,
+        beneficiarios: benef,
+        cantidad_raciones: benef,
+        unidad: '$',
+      });
+    }
+
+    merged.sort((a, b) => b.valor - a.valor);
+    return merged.slice(offsetVal, offsetVal + limitVal);
+  } finally {
+    await close();
+  }
+}
+
 async function getRankings(params: {
   periodo: string;
   tipo: RankingTipo;
@@ -676,9 +869,25 @@ async function getRankings(params: {
   limit?: number;
   offset?: number;
 }): Promise<ComedoresRankingRow[]> {
-  const { connection, close } = await getComedoresConnection();
   const limitVal = Math.min(Math.max(0, params.limit ?? 50), 2000);
   const offsetVal = Math.max(0, params.offset ?? 0);
+
+  if (params.tipo === 'raciones_consolidado') {
+    const fromCsv = await getRankingsRacionesConsolidadoFromCsv(params);
+    if (fromCsv) return fromCsv;
+  }
+
+  if (params.tipo === 'otros_recursos') {
+    const fromCsv = await getRankingsOtrosRecursosFromCsv(params);
+    if (fromCsv) return fromCsv;
+  }
+
+  if (params.tipo === 'promedio_beneficiario') {
+    const fromCsv = await getRankingsPromedioBeneficiarioFromCsv(params);
+    if (fromCsv) return fromCsv;
+  }
+
+  const { connection, close } = await getComedoresConnection();
 
   try {
     const pRank = String(params.periodo ?? '').trim();
@@ -807,6 +1016,7 @@ async function getRankings(params: {
     }
 
     if (params.tipo === 'raciones_consolidado') {
+      // Fallback si no hay CSV del periodo en docs/{mes}/
       let rows: any[] = [];
       try {
         const [r]: any = await connection.execute(
@@ -1472,7 +1682,18 @@ async function getComedorDetail(comedorId: string, periodo: string): Promise<Com
     } catch (e: any) {
       if (e?.code !== 'ER_NO_SUCH_TABLE') throw e;
     }
-    if (teknoPdTotalPeriodo > 0) {
+
+    const csvTekno = pDet
+      ? lookupTeknofoodPadronForComedor(
+          pDet,
+          rowComedorId(c.comedor_id),
+          rowComedorId(c.numero_oficial)
+        )
+      : null;
+
+    if (csvTekno) {
+      presupuestoDesglose = applyTeknofoodCsvToPresupuestoDesglose(presupuestoDesglose, csvTekno);
+    } else if (teknoPdTotalPeriodo > 0) {
       const kTek = TEKNOFOOD_MONTO_FIJO_ARS / teknoPdTotalPeriodo;
       presupuestoDesglose = presupuestoDesglose.map((row) => {
         const sr = (row.subrubro ?? '').trim();
@@ -1574,8 +1795,11 @@ async function getComedorDetail(comedorId: string, periodo: string): Promise<Com
     const frescosKgTotal = kgVerduras + kgCarnes;
 
     const racionesRaw = Number(gastoComp[0]?.raciones ?? 0);
-    const raciones =
-      teknoPdTotalPeriodo > 0 ? (racionesRaw * TEKNOFOOD_MONTO_FIJO_ARS) / teknoPdTotalPeriodo : racionesRaw;
+    const raciones = csvTekno
+      ? csvTekno.monto
+      : teknoPdTotalPeriodo > 0
+        ? (racionesRaw * TEKNOFOOD_MONTO_FIJO_ARS) / teknoPdTotalPeriodo
+        : racionesRaw;
     const becados = Number(gastoComp[0]?.becados ?? 0);
     const refrigerio_comida = Number(gastoComp[0]?.refrigerio_comida ?? 0);
     const carnesMonto = Number(gastoComp[0]?.carnes ?? 0);

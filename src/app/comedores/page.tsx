@@ -23,7 +23,6 @@ import {
   Info,
 } from "lucide-react";
 import { apiUrl } from "@/lib/apiBase";
-import { TEKNOFOOD_PRECIO_RACION_MENSUAL_ARS } from "@/lib/teknofood";
 import { ETIQUETA_EQUIVALENTE_MENSUAL_FRESCOS_CARNES } from "@/lib/presupuestoCantidadesSemanalMensual";
 import { Header } from "@/components/Header";
 import { KPICard } from "@/components/KPICard";
@@ -104,7 +103,7 @@ type RankingTablaRow = RankingRow & {
   gastoTotalMensual: number;
   pctParticipacionRelativa: number | null;
   montoMensualPorBeneficiario: number | null;
-  montoPorRacionTexto: string | null;
+  cantRaciones: number;
   montoParaOrden: number;
 };
 
@@ -220,11 +219,11 @@ const RANKING_TABS: { key: GastosRankingTipo; label: string }[] = [
 
 const RANKING_TOOLTIP: Record<GastosRankingTipo, string> = {
   raciones_consolidado:
-    "Monto total mensual por dependencia = suma de Teknofood (comidas y refrigerios del padrón), refrigerio / comidas y carnes según presupuesto cargado para el periodo. La participación relativa compara cada fila contra el total de esos tres rubros del resumen del periodo.",
+    "Monto total mensual = gasto mensual de carnes (CSV) + frutas y verduras (CSV) + Teknofood (comidas + refrigerios del padrón × $1.600 × 30 días). Cantidad de raciones = comidas + refrigerios del padrón Teknofood. Monto mensual por ración = monto total ÷ cantidad de raciones.",
   otros_recursos:
-    "Monto total por dependencia = suma presupuestada de gas, limpieza y fumigación. Participación relativa: peso de esa dependencia sobre el total de otros recursos del periodo (resumen). Monto mensual por beneficiario = monto total ÷ cantidad de beneficiarios.",
+    "Monto total mensual = costo mensual de gas + limpieza + fumigación (CSV de actualización mensual por ID de dependencia). Cantidad de beneficiarios = comidas + refrigerios del padrón Teknofood. Monto mensual por beneficiario = monto total ÷ cantidad de beneficiarios. Participación relativa: peso sobre la suma de montos de las filas cargadas desde CSV.",
   promedio_beneficiario:
-    "Monto total por dependencia = suma de todos los rubros del presupuesto del periodo (comidas/Teknofood, becados, refrigerio, carnes y otros recursos). Participación relativa: peso del gasto de esa dependencia sobre el total de esos rubros en el resumen. Monto mensual por beneficiario = monto total ÷ cantidad de beneficiarios.",
+    "Monto total = monto total de la pestaña Raciones + monto total de la pestaña Otros recursos (mismos CSV mensuales por ID). Cantidad de beneficiarios = comidas + refrigerios del padrón Teknofood. Monto mensual por beneficiario = monto total ÷ cantidad de beneficiarios. Participación relativa: peso sobre la suma de montos totales de las filas cargadas.",
 };
 
 const MESES_SLUG_A_NOMBRE: Record<string, string> = {
@@ -555,9 +554,26 @@ function ComedoresPageContent() {
   }, [periodo, rankingTipo, rankingAmbito, searchTerm]);
 
   const rankingRows = useMemo(() => {
-    const totalRubro = totalRankingDenominador(rankingTipo, summary?.montos);
+    const usaDenominadorCsv =
+      (rankingTipo === "raciones_consolidado" ||
+        rankingTipo === "otros_recursos" ||
+        rankingTipo === "promedio_beneficiario") &&
+      rankings.length > 0;
+    const totalRubro = usaDenominadorCsv
+      ? rankings.reduce(
+          (s, r) =>
+            s +
+            (rankingTipo === "promedio_beneficiario"
+              ? Number(r.gasto_total_mensual ?? r.valor ?? 0)
+              : Number(r.valor ?? 0)),
+          0
+        )
+      : totalRankingDenominador(rankingTipo, summary?.montos);
     const normalizedSearch = searchTerm.trim().toLowerCase();
     const esProm = rankingTipo === "promedio_beneficiario";
+    const esRaciones = rankingTipo === "raciones_consolidado";
+    const esOtrosCsv = rankingTipo === "otros_recursos";
+    const dividePorTekno = esRaciones || esOtrosCsv;
 
     const rows: RankingTablaRow[] = rankings
       .map((r) => {
@@ -567,22 +583,21 @@ function ComedoresPageContent() {
         const valorLinea = valorApi;
         const totalGastoResumen = totalGastoPresupuestoResumen(summary?.montos);
         const pctParticipacionRelativa =
-          esProm && totalGastoResumen > 0
-            ? (gastoTotalMensual / totalGastoResumen) * 100
-            : !esProm && totalRubro > 0
-              ? (valorLinea / totalRubro) * 100
-              : null;
-        const montoMensualPorBeneficiario = benef > 0 ? gastoTotalMensual / benef : null;
-        let montoPorRacionTexto: string | null = null;
-        if (rankingTipo === "raciones_consolidado") {
-          const cr = Number(r.cantidad_raciones ?? 0);
-          const mt = Number(r.monto_teknofood ?? 0);
-          if (cr > 0 && mt > 0) {
-            montoPorRacionTexto = `$${(mt / cr).toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
-          } else {
-            montoPorRacionTexto = `$${TEKNOFOOD_PRECIO_RACION_MENSUAL_ARS.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`;
-          }
-        }
+          !esProm && totalRubro > 0
+            ? (valorLinea / totalRubro) * 100
+            : esProm && totalRubro > 0
+              ? (gastoTotalMensual / totalRubro) * 100
+              : esProm && totalGastoResumen > 0
+                ? (gastoTotalMensual / totalGastoResumen) * 100
+                : null;
+        const cantRaciones = Number(r.cantidad_raciones ?? 0);
+        const montoMensualPorBeneficiario = dividePorTekno
+          ? cantRaciones > 0
+            ? gastoTotalMensual / cantRaciones
+            : null
+          : benef > 0
+            ? gastoTotalMensual / benef
+            : null;
         const montoParaOrden = esProm ? gastoTotalMensual : valorLinea;
         return {
           ...r,
@@ -591,7 +606,7 @@ function ComedoresPageContent() {
           gastoTotalMensual,
           pctParticipacionRelativa,
           montoMensualPorBeneficiario,
-          montoPorRacionTexto,
+          cantRaciones,
           montoParaOrden,
         };
       })
@@ -603,12 +618,14 @@ function ComedoresPageContent() {
       .filter((r) => {
         const montoPositivo = r.gastoTotalMensual > 0 || r.valorLinea > 0;
         const benefPositivo = r.benef > 0;
+        const racionesPositivo = r.cantRaciones > 0;
         const pctPositivo = Number(r.pctParticipacionRelativa ?? 0) > 0;
         const promPositivo = Number(r.montoMensualPorBeneficiario ?? 0) > 0;
+        const cantidadPositiva = dividePorTekno ? racionesPositivo : benefPositivo;
         return (
           montoPositivo ||
           (esProm && benefPositivo && (r.gastoTotalMensual > 0 || r.valorLinea > 0)) ||
-          benefPositivo ||
+          cantidadPositiva ||
           pctPositivo ||
           promPositivo
         );
@@ -621,7 +638,9 @@ function ComedoresPageContent() {
       if (sortKey === "monto_por_beneficiario") {
         cmp = cmpNullableNumberRaw(a.montoMensualPorBeneficiario, b.montoMensualPorBeneficiario);
       }
-      if (sortKey === "beneficiarios") cmp = a.benef - b.benef;
+      if (sortKey === "beneficiarios") {
+        cmp = dividePorTekno ? a.cantRaciones - b.cantRaciones : a.benef - b.benef;
+      }
       return sortDir === "asc" ? cmp : -cmp;
     });
 
@@ -670,8 +689,8 @@ function ComedoresPageContent() {
     return { min, max };
   }, [rankingTipo, rankings]);
 
-  const rankingTablaColumnas = rankingTipo === "raciones_consolidado" ? 7 : 6;
-  const rankingTablaMinAncho = rankingTipo === "raciones_consolidado" ? "min-w-[980px]" : "min-w-[860px]";
+  const rankingTablaColumnas = 6;
+  const rankingTablaMinAncho = "min-w-[860px]";
   const presupuestoFvCantidades = useMemo(() => {
     const v = summary?.montos?.refrigerio_verduras_kg ?? 0;
     const f = summary?.montos?.refrigerio_frutas_unidades ?? 0;
@@ -685,7 +704,7 @@ function ComedoresPageContent() {
       dependencias: etiquetaKpiConPeriodo("Total de dependencias", periodo, periodos),
       teknofood: etiquetaKpiConPeriodo("Costo de Teknofood", periodo, periodos),
       becados: etiquetaKpiConPeriodo("Becados", periodo, periodos),
-      refrigerio: etiquetaKpiConPeriodo("Refrigerio / Comida", periodo, periodos),
+      refrigerio: etiquetaKpiConPeriodo("Productos frescos", periodo, periodos),
       carnes: etiquetaKpiConPeriodo("Carnes", periodo, periodos),
       otros: etiquetaKpiConPeriodo("Otros recursos", periodo, periodos),
     }),
@@ -1026,7 +1045,7 @@ function ComedoresPageContent() {
                         rankingTipo === "otros_recursos"
                           ? "Monto total (gas, fumigación y limpieza)"
                           : rankingTipo === "promedio_beneficiario"
-                            ? "Monto total (comida, refrigerio y otros recursos)"
+                            ? "Monto total (raciones + otros recursos)"
                             : "Monto total mensual"
                       }
                       columnKey="monto_total"
@@ -1046,7 +1065,11 @@ function ComedoresPageContent() {
                 <th className="pb-3 pr-3 text-right align-bottom font-bold normal-case">
                   <div className="flex justify-end">
                     <RankingSortHeader
-                      label="Monto mensual por beneficiario"
+                      label={
+                        rankingTipo === "raciones_consolidado"
+                          ? "Monto mensual por ración"
+                          : "Monto mensual por beneficiario"
+                      }
                       columnKey="monto_por_beneficiario"
                       activeKey={sortKey}
                       dir={sortDir}
@@ -1057,7 +1080,11 @@ function ComedoresPageContent() {
                 <th className="pb-3 pr-3 text-right align-bottom font-bold normal-case">
                   <div className="flex justify-end">
                     <RankingSortHeader
-                      label="Cantidad de beneficiarios"
+                      label={
+                        rankingTipo === "raciones_consolidado"
+                          ? "Cantidad de raciones"
+                          : "Cantidad de beneficiarios"
+                      }
                       columnKey="beneficiarios"
                       activeKey={sortKey}
                       dir={sortDir}
@@ -1065,14 +1092,6 @@ function ComedoresPageContent() {
                     />
                   </div>
                 </th>
-                {rankingTipo === "raciones_consolidado" && (
-                  <th
-                    className="pb-3 pr-0 text-right align-bottom font-bold normal-case"
-                    title="Con monto y cantidad Teknofood en presupuesto: cociente monto/cantidad del periodo. Sin esos datos: precio referencia diario ($1.600) expresado en equivalente mensual (× 365÷12)."
-                  >
-                    Monto por ración
-                  </th>
-                )}
               </tr>
             </thead>
             <tbody>
@@ -1108,7 +1127,12 @@ function ComedoresPageContent() {
                   const puedeDetalle = Boolean(r.comedor_id?.trim());
                   const zonaAmbito = [r.zona_nombre, r.ambito].filter(Boolean).join(" · ") || "—";
                   const decMonto = rankingTipo === "promedio_beneficiario" ? 2 : 0;
-                  const decProm = rankingTipo === "promedio_beneficiario" ? 2 : 0;
+                  const decProm =
+                    rankingTipo === "promedio_beneficiario"
+                      ? 2
+                      : rankingTipo === "raciones_consolidado"
+                        ? 0
+                        : 0;
                   return (
                     <tr
                       key={r.comedor_id || `row-${i}`}
@@ -1144,13 +1168,10 @@ function ComedoresPageContent() {
                           : "—"}
                       </td>
                       <td className="whitespace-nowrap py-3 pr-3 text-right font-semibold text-slate-800">
-                        {r.benef.toLocaleString("es-AR")}
+                        {rankingTipo === "raciones_consolidado" || rankingTipo === "otros_recursos"
+                          ? r.cantRaciones.toLocaleString("es-AR")
+                          : r.benef.toLocaleString("es-AR")}
                       </td>
-                      {rankingTipo === "raciones_consolidado" && (
-                        <td className="whitespace-nowrap py-3 pl-2 text-right text-slate-600">
-                          {r.montoPorRacionTexto ?? "—"}
-                        </td>
-                      )}
                     </tr>
                   );
                 })
@@ -1362,7 +1383,7 @@ function ComedoresPageContent() {
                     <p className="text-xs text-slate-600 leading-relaxed">
                       Montos y cantidades según la carga de presupuesto para esta dependencia. Si un ítem no tiene monto ni
                       cantidad en el periodo, no se lista en la tabla. En refrigerio y carnes, las cantidades (kg o
-                      unidades) se muestran en equivalente mensual (origen semanal × 52÷12), en línea con los montos
+                      unidades) se muestran en equivalente mensual (origen semanal × 4 semanas), en línea con los montos
                       mensuales.
                     </p>
                     {(() => {
@@ -1388,7 +1409,7 @@ function ComedoresPageContent() {
                                 </th>
                                 <th
                                   className="pb-2 font-bold text-right align-bottom"
-                                  title="Cantidades de refrigerio/carnes en equivalente mensual (origen semanal × 52÷12)."
+                                  title="Cantidades de refrigerio/carnes en equivalente mensual (origen semanal × 4 semanas)."
                                 >
                                   Cantidad
                                 </th>
