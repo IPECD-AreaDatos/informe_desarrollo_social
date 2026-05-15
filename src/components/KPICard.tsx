@@ -65,7 +65,7 @@ export function KPICard({
             </div>
 
             <div className="space-y-1 mt-6 relative z-10">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{label}</p>
+                <p className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">{label}</p>
                 {loading ? (
                     <div className="h-10 w-3/4 bg-slate-100 animate-pulse rounded-lg mt-2" />
                 ) : (

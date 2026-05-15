@@ -6,7 +6,6 @@ import { TEKNOFOOD_DIAS_MES_RACION, TEKNOFOOD_PRECIO_RACION_ARS } from './teknof
 export interface RankingRacionesCsvRow {
   padronId: string;
   nombreDependencia: string | null;
-  /** Zona del padrón Teknofood (p. ej. CAPITAL, San Miguel). */
   zonaCsv: string | null;
   montoCarne: number;
   montoVerdurasFrutas: number;
@@ -132,7 +131,6 @@ export function readCsvRows(filePath: string): string[][] {
   return rows;
 }
 
-/** Normaliza nombres de archivo (macOS suele usar NFD: o + acento combinado). */
 function normalizeFileName(name: string): string {
   return name.normalize('NFC');
 }
@@ -232,7 +230,6 @@ export function loadTeknofoodById(
   return out;
 }
 
-/** Carga y fusiona los tres CSV de actualización mensual por ID de padrón. */
 export function loadRankingRacionesFromCsvDir(dir: string): RankingRacionesCsvRow[] {
   const carne = loadCarneById(dir);
   const verduras = loadVerdurasById(dir);
@@ -283,12 +280,6 @@ export type TeknofoodPadronRow = {
   zona: string | null;
 };
 
-function isTeknofoodDesgloseRow(rubro: string, subrubro: string | null): boolean {
-  if (String(rubro ?? '').trim() !== 'monto_invertido') return false;
-  const sr = String(subrubro ?? '').trim().toLowerCase();
-  return sr === '' || sr === 'teknofood';
-}
-
 /** Busca fila Teknofood del padrón por `numero_oficial` o `comedor_id`. */
 export function lookupTeknofoodPadronForComedor(
   periodo: string,
@@ -310,7 +301,12 @@ export function lookupTeknofoodPadronForComedor(
 export function applyTeknofoodCsvToPresupuestoDesglose<
   T extends { rubro: string; subrubro: string | null; monto: number; cantidad: number; unidad: string | null },
 >(desglose: T[], tekno: TeknofoodPadronRow): T[] {
-  const idx = desglose.findIndex((r) => isTeknofoodDesgloseRow(r.rubro, r.subrubro));
+  const isTekno = (rubro: string, subrubro: string | null) => {
+    if (String(rubro ?? '').trim() !== 'monto_invertido') return false;
+    const sr = String(subrubro ?? '').trim().toLowerCase();
+    return sr === '' || sr === 'teknofood';
+  };
+  const idx = desglose.findIndex((r) => isTekno(r.rubro, r.subrubro));
   const row = {
     rubro: 'monto_invertido',
     subrubro: 'teknofood',

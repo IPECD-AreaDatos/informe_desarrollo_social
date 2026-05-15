@@ -219,11 +219,11 @@ const RANKING_TABS: { key: GastosRankingTipo; label: string }[] = [
 
 const RANKING_TOOLTIP: Record<GastosRankingTipo, string> = {
   raciones_consolidado:
-    "Monto total mensual = gasto mensual de carnes (CSV) + frutas y verduras (CSV) + Teknofood (comidas + refrigerios del padrón × $1.600 × 30 días). Cantidad de raciones = comidas + refrigerios del padrón Teknofood. Monto mensual por ración = monto total ÷ cantidad de raciones.",
+    "Monto total mensual = carnes + frutas/verduras (presupuesto en BD) + Teknofood (raciones × $1.600 × 30 días). Cantidad de raciones = raciones Teknofood del periodo. Monto mensual por ración = monto total ÷ cantidad de raciones.",
   otros_recursos:
-    "Monto total mensual = costo mensual de gas + limpieza + fumigación (CSV de actualización mensual por ID de dependencia). Cantidad de beneficiarios = comidas + refrigerios del padrón Teknofood. Monto mensual por beneficiario = monto total ÷ cantidad de beneficiarios. Participación relativa: peso sobre la suma de montos de las filas cargadas desde CSV.",
+    "Monto total = suma en BD de gas + limpieza + fumigación (rubro otros_recursos). Cantidad de beneficiarios = raciones Teknofood del periodo (comidas + refrigerios). Monto mensual por beneficiario = monto total ÷ cantidad de beneficiarios.",
   promedio_beneficiario:
-    "Monto total = monto total de la pestaña Raciones + monto total de la pestaña Otros recursos (mismos CSV mensuales por ID). Cantidad de beneficiarios = comidas + refrigerios del padrón Teknofood. Monto mensual por beneficiario = monto total ÷ cantidad de beneficiarios. Participación relativa: peso sobre la suma de montos totales de las filas cargadas.",
+    "Monto total = mismo cálculo que Raciones (carnes + frescos + Teknofood raciones × $1.600 × 30) + mismo total que Otros recursos (gas + limpieza + fumigación en BD). Monto mensual por beneficiario = monto total ÷ beneficiarios del periodo.",
 };
 
 const MESES_SLUG_A_NOMBRE: Record<string, string> = {
@@ -554,17 +554,17 @@ function ComedoresPageContent() {
   }, [periodo, rankingTipo, rankingAmbito, searchTerm]);
 
   const rankingRows = useMemo(() => {
-    const usaDenominadorCsv =
+    const usaDenominadorFilas =
       (rankingTipo === "raciones_consolidado" ||
         rankingTipo === "otros_recursos" ||
         rankingTipo === "promedio_beneficiario") &&
       rankings.length > 0;
-    const totalRubro = usaDenominadorCsv
+    const totalRubro = usaDenominadorFilas
       ? rankings.reduce(
           (s, r) =>
             s +
             (rankingTipo === "promedio_beneficiario"
-              ? Number(r.gasto_total_mensual ?? r.valor ?? 0)
+              ? Number(r.gasto_total_mensual ?? 0)
               : Number(r.valor ?? 0)),
           0
         )
@@ -572,8 +572,8 @@ function ComedoresPageContent() {
     const normalizedSearch = searchTerm.trim().toLowerCase();
     const esProm = rankingTipo === "promedio_beneficiario";
     const esRaciones = rankingTipo === "raciones_consolidado";
-    const esOtrosCsv = rankingTipo === "otros_recursos";
-    const dividePorTekno = esRaciones || esOtrosCsv;
+    const esOtros = rankingTipo === "otros_recursos";
+    const dividePorTekno = esRaciones || esOtros;
 
     const rows: RankingTablaRow[] = rankings
       .map((r) => {
@@ -583,13 +583,11 @@ function ComedoresPageContent() {
         const valorLinea = valorApi;
         const totalGastoResumen = totalGastoPresupuestoResumen(summary?.montos);
         const pctParticipacionRelativa =
-          !esProm && totalRubro > 0
-            ? (valorLinea / totalRubro) * 100
-            : esProm && totalRubro > 0
-              ? (gastoTotalMensual / totalRubro) * 100
-              : esProm && totalGastoResumen > 0
-                ? (gastoTotalMensual / totalGastoResumen) * 100
-                : null;
+          totalRubro > 0
+            ? (gastoTotalMensual / totalRubro) * 100
+            : esProm && totalGastoResumen > 0
+              ? (gastoTotalMensual / totalGastoResumen) * 100
+              : null;
         const cantRaciones = Number(r.cantidad_raciones ?? 0);
         const montoMensualPorBeneficiario = dividePorTekno
           ? cantRaciones > 0
@@ -853,6 +851,7 @@ function ComedoresPageContent() {
           value={summary?.total_comedores?.toLocaleString() ?? "0"}
           icon={UtensilsCrossed}
           loading={loadingSummary}
+          color="#719C29"
           description={totalDependenciasTooltip}
           noteText={dependenciasPorAmbitoNote}
         />
@@ -863,7 +862,7 @@ function ComedoresPageContent() {
           secondaryLabel="Cantidad de raciones"
           icon={HandCoins}
           loading={loadingSummary}
-          color="#0d9488"
+          color="#008275"
           description="Comprende a los recursos qué son adquiridos de TeknoFoot"
         />
         <KPICard
@@ -874,7 +873,7 @@ function ComedoresPageContent() {
           noteText="Montos correspondientes a becados del interior."
           icon={Users}
           loading={loadingSummary}
-          color="#0369a1"
+          color="#1F5D9B"
           description="Se divide en 3 categorías: cocinero, auxiliar y encargado."
         />
         <KPICard
@@ -884,7 +883,7 @@ function ComedoresPageContent() {
           secondaryLabel="Cantidades"
           icon={ClipboardList}
           loading={loadingSummary}
-          color="#f97316"
+          color="#F36F21"
           description={descripcionRefrigerioFv}
         />
         <KPICard
@@ -894,7 +893,7 @@ function ComedoresPageContent() {
           secondaryLabel="Cantidad (kg)"
           icon={Beef}
           loading={loadingSummary}
-          color="#dc2626"
+          color="#EA2F09"
           description="Presupuesto carnes: vacuna, pollo y cerdo (kg)."
         />
         <KPICard
@@ -902,7 +901,7 @@ function ComedoresPageContent() {
           value={`$${(summary?.montos?.otros_recursos_monto ?? 0).toLocaleString("es-AR", { maximumFractionDigits: 0 })}`}
           icon={Sparkles}
           loading={loadingSummary}
-          color="#7c3aed"
+          color="#6B5CB7"
           description="Monto: limpieza + gas + fumigación. Frecuencia: limpieza cada 2 meses (bimestral) y fumigación cada 3 meses (trimestral)."
         />
       </div>

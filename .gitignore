@@ -38,4 +38,4 @@ __pycache__
 
 # Datos y scripts locales comedores (CSV / ETL por mes)
 scripts/comedores/
-docs/marzo/
+#docs/marzo/

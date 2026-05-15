@@ -15,3 +15,15 @@ export const TEKNOFOOD_DIAS_PROMEDIO_POR_MES = 365 / 12;
 
 /** Precio de referencia por ración en equivalente mensual (diario × 365/12). */
 export const TEKNOFOOD_PRECIO_RACION_MENSUAL_ARS = TEKNOFOOD_PRECIO_RACION_ARS * TEKNOFOOD_DIAS_PROMEDIO_POR_MES;
+
+/** Monto mensual Teknofood por dependencia: raciones × precio diario × 30 días. */
+export function montoTeknofoodDesdeRaciones(cantidadRaciones: number): number {
+  const q = Math.max(0, Math.round(Number(cantidadRaciones) || 0));
+  return q * TEKNOFOOD_PRECIO_RACION_ARS * TEKNOFOOD_DIAS_MES_RACION;
+}
+
+export function esRubroTeknofoodPresupuesto(rubro: string, subrubro: string | null | undefined): boolean {
+  if (String(rubro ?? '').trim() !== 'monto_invertido') return false;
+  const sr = String(subrubro ?? '').trim().toLowerCase();
+  return sr === '' || sr === 'teknofood';
+}
