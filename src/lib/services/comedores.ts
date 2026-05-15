@@ -8,7 +8,11 @@ import {
   cantidadSemanalAMensual,
   escalarFrescosDesgloseSemanalAMensual,
 } from '../presupuestoCantidadesSemanalMensual';
-import { loadRankingOtrosRecursosForPeriodo } from '../rankingOtrosRecursosCsv';
+import {
+  applyOtrosRecursosCsvToPresupuestoDesglose,
+  loadRankingOtrosRecursosForPeriodo,
+  lookupOtrosRecursosForComedor,
+} from '../rankingOtrosRecursosCsv';
 import { loadRankingPromedioBeneficiarioForPeriodo } from '../rankingPromedioBeneficiarioCsv';
 import {
   applyTeknofoodCsvToPresupuestoDesglose,
@@ -1754,6 +1758,14 @@ async function getComedorDetail(comedorId: string, periodo: string): Promise<Com
         )
       : null;
 
+    const csvOtros = pDet
+      ? lookupOtrosRecursosForComedor(
+          pDet,
+          rowComedorId(c.comedor_id),
+          rowComedorId(c.numero_oficial)
+        )
+      : null;
+
     if (csvTekno) {
       presupuestoDesglose = applyTeknofoodCsvToPresupuestoDesglose(presupuestoDesglose, csvTekno);
     } else {
@@ -1770,6 +1782,11 @@ async function getComedorDetail(comedorId: string, periodo: string): Promise<Com
         return row;
       });
     }
+
+    if (csvOtros) {
+      presupuestoDesglose = applyOtrosRecursosCsvToPresupuestoDesglose(presupuestoDesglose, csvOtros);
+    }
+
     presupuestoDesglose = presupuestoDesglose.map((row) => ({
       ...row,
       cantidad: escalarCantidadPresupuestoDepSemanalMensual(row.rubro, row.cantidad),
@@ -1876,7 +1893,9 @@ async function getComedorDetail(comedorId: string, periodo: string): Promise<Com
     const otrosSql = safeNumber(gastoComp[0]?.otros_recursos);
     const otrosFromPd = sumMontoRubroPd('otros_recursos');
     let otros_recursos = Math.max(otrosSql, otrosFromPd);
-    if (otros_recursos <= 0 && pDet) {
+    if (csvOtros && csvOtros.montoTotalMensual > 0) {
+      otros_recursos = csvOtros.montoTotalMensual;
+    } else if (otros_recursos <= 0 && pDet) {
       const pesoLoc = pesoOtrosDesdeBeneficios(
         { garrafas_10: g10, garrafas_15: g15, garrafas_45: g45 },
         limpieza,

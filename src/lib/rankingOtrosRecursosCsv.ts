@@ -116,3 +116,58 @@ export function loadRankingOtrosRecursosForPeriodo(
   if (!gas || !limpieza || !fumigacion || !tekno) return null;
   return loadRankingOtrosRecursosFromCsvDir(dir);
 }
+
+export type OtrosRecursosPadronRow = Pick<
+  RankingOtrosRecursosCsvRow,
+  'montoGas' | 'montoLimpieza' | 'montoFumigacion' | 'montoTotalMensual'
+>;
+
+/** Busca gas + limpieza + fumigación del padrón por `numero_oficial` o `comedor_id`. */
+export function lookupOtrosRecursosForComedor(
+  periodo: string,
+  comedorId: string | null | undefined,
+  numeroOficial: string | null | undefined
+): OtrosRecursosPadronRow | null {
+  const rows = loadRankingOtrosRecursosForPeriodo(periodo);
+  if (!rows?.length) return null;
+  for (const key of [numeroOficial, comedorId]) {
+    const k = String(key ?? '').trim();
+    if (!k) continue;
+    const hit = rows.find((r) => r.padronId === k);
+    if (hit && hit.montoTotalMensual > 0) {
+      return {
+        montoGas: hit.montoGas,
+        montoLimpieza: hit.montoLimpieza,
+        montoFumigacion: hit.montoFumigacion,
+        montoTotalMensual: hit.montoTotalMensual,
+      };
+    }
+  }
+  return null;
+}
+
+export function applyOtrosRecursosCsvToPresupuestoDesglose<
+  T extends { rubro: string; subrubro: string | null; monto: number; cantidad: number; unidad: string | null },
+>(desglose: T[], otros: OtrosRecursosPadronRow): T[] {
+  const upsert = (subrubro: string, monto: number) => {
+    const idx = desglose.findIndex(
+      (r) => r.rubro === 'otros_recursos' && String(r.subrubro ?? '').trim() === subrubro
+    );
+    const row = {
+      rubro: 'otros_recursos',
+      subrubro,
+      monto,
+      cantidad: monto > 0 ? 1 : 0,
+      unidad: '$',
+    } as T;
+    if (idx >= 0) {
+      desglose = desglose.map((r, i) => (i === idx ? { ...r, ...row } : r));
+    } else if (monto > 0) {
+      desglose = [...desglose, row];
+    }
+  };
+  upsert('gas', otros.montoGas);
+  upsert('limpieza', otros.montoLimpieza);
+  upsert('fumigacion', otros.montoFumigacion);
+  return desglose;
+}
