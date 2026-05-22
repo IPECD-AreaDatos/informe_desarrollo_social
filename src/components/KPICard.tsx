@@ -55,7 +55,7 @@ export function KPICard({
 
                         {/* Custom Tooltip - Positioned ABOVE */}
                         {showTooltip && (
-                            <div className="absolute right-0 bottom-full mb-3 w-56 bg-slate-800 text-white text-[11px] p-4 rounded-2xl shadow-2xl z-[100] animate-in fade-in slide-in-from-bottom-2 duration-200">
+                            <div className="absolute right-0 bottom-full mb-3 w-64 max-w-[85vw] bg-slate-800 text-white text-sm p-4 rounded-2xl shadow-2xl z-[100] animate-in fade-in slide-in-from-bottom-2 duration-200">
                                 <div className="absolute -bottom-1 right-2 w-3 h-3 bg-slate-800 rotate-45" />
                                 <p className="font-bold leading-relaxed">{description}</p>
                             </div>

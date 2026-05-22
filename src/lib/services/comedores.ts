@@ -1,3 +1,4 @@
+import type { Connection } from 'mysql2/promise';
 import { getComedoresConnection } from '../db';
 import {
   TEKNOFOOD_MONTO_FIJO_ARS,
@@ -15,9 +16,15 @@ import {
 } from '../rankingOtrosRecursosCsv';
 import { loadRankingPromedioBeneficiarioForPeriodo } from '../rankingPromedioBeneficiarioCsv';
 import {
+  applyFrescosCsvToPresupuestoDesglose,
   applyTeknofoodCsvToPresupuestoDesglose,
+  canonicalPadronId,
   loadRankingRacionesForPeriodo,
+  expandPadronLookupKeys,
+  getPadronAliasMapForPeriodo,
+  lookupFrescosCsvForComedor,
   lookupTeknofoodPadronForComedor,
+  totalRacionesTeknofoodForPeriodo,
 } from '../rankingRacionesCsv';
 /** Orden cronológico para slugs tipo `marzo-2026` (no lexicográfico). */
 const MESES_SLUG: Record<string, number> = {
@@ -70,19 +77,28 @@ function cantidadRacionesTeknofoodDesdeFila(row: {
   return Math.max(Number(row.cantidad_raciones ?? 0), Number(row.beneficiarios ?? 0));
 }
 
-function montoRacionesConsolidadoDesdeFila(row: {
-  monto_frescos?: unknown;
-  cantidad_raciones?: unknown;
-  beneficiarios?: unknown;
-}): number {
+function montoRacionesConsolidadoDesdeFila(
+  row: {
+    monto_frescos?: unknown;
+    cantidad_raciones?: unknown;
+    beneficiarios?: unknown;
+  },
+  totalRacionesTeknoPeriodo: number
+): number {
   const cantidadRaciones = cantidadRacionesTeknofoodDesdeFila(row);
-  return Number(row.monto_frescos ?? 0) + montoTeknofoodDesdeRaciones(cantidadRaciones);
+  return (
+    Number(row.monto_frescos ?? 0) +
+    montoTeknofoodDesdeRaciones(cantidadRaciones, totalRacionesTeknoPeriodo)
+  );
 }
 
-function mapFilaRankingRacionesConsolidado(r: Record<string, unknown>): ComedoresRankingRow {
+function mapFilaRankingRacionesConsolidado(
+  r: Record<string, unknown>,
+  totalRacionesTeknoPeriodo: number
+): ComedoresRankingRow {
   const cantidadRaciones = cantidadRacionesTeknofoodDesdeFila(r);
-  const montoTeknofood = montoTeknofoodDesdeRaciones(cantidadRaciones);
-  const valor = montoRacionesConsolidadoDesdeFila(r);
+  const montoTeknofood = montoTeknofoodDesdeRaciones(cantidadRaciones, totalRacionesTeknoPeriodo);
+  const valor = montoRacionesConsolidadoDesdeFila(r, totalRacionesTeknoPeriodo);
   return {
     comedor_id: rowComedorId(r.comedor_id),
     nombre: String(r.nombre || 'Sin nombre').trim() || 'Sin nombre',
@@ -113,10 +129,13 @@ function mapFilaRankingOtrosRecursos(r: Record<string, unknown>): ComedoresRanki
   };
 }
 
-function mapFilaRankingPromedioBeneficiario(r: Record<string, unknown>): ComedoresRankingRow {
+function mapFilaRankingPromedioBeneficiario(
+  r: Record<string, unknown>,
+  totalRacionesTeknoPeriodo: number
+): ComedoresRankingRow {
   const cantidadRaciones = cantidadRacionesTeknofoodDesdeFila(r);
   const montoTotal =
-    montoRacionesConsolidadoDesdeFila(r) + Number(r.monto_otros ?? 0);
+    montoRacionesConsolidadoDesdeFila(r, totalRacionesTeknoPeriodo) + Number(r.monto_otros ?? 0);
   const benef = Number(r.beneficiarios ?? 0);
   return {
     comedor_id: rowComedorId(r.comedor_id),
@@ -141,6 +160,48 @@ function sqlExprCantidadRacionesTeknofoodPd(): string {
       ELSE 0
     END
   ), 0)`;
+}
+
+async function queryTotalRacionesTeknofoodSql(connection: Connection): Promise<number> {
+  try {
+    const [rows]: any = await connection.execute(
+      `SELECT COALESCE(SUM(
+         CASE
+           WHEN pd.rubro = 'monto_invertido'
+            AND (pd.subrubro <=> 'teknofood' OR pd.subrubro IS NULL OR TRIM(COALESCE(pd.subrubro, '')) = '')
+             THEN COALESCE(pd.cantidad, 0)
+           ELSE 0
+         END
+       ), 0) AS total
+       FROM PRESUPUESTO_DEPENDENCIA pd
+       WHERE (TRIM(COALESCE(@cp, '')) = '' OR CONVERT(TRIM(pd.periodo) USING utf8mb4) COLLATE utf8mb4_unicode_ci <=> @cp)`
+    );
+    const t = Number((rows as { total?: unknown }[])[0]?.total ?? 0);
+    if (t > 0) return t;
+  } catch (e: unknown) {
+    if ((e as { code?: string })?.code !== 'ER_NO_SUCH_TABLE') throw e;
+  }
+  try {
+    const [rows]: any = await connection.execute(
+      `SELECT COALESCE(SUM(r2.cantidad_beneficiarios), 0) AS total
+       FROM RACION r2
+       WHERE (TRIM(COALESCE(@cp, '')) = '' OR TRIM(r2.plan_ref) <=> TRIM(CONVERT(@cp USING utf8mb4)))`
+    );
+    return Number((rows as { total?: unknown }[])[0]?.total ?? 0);
+  } catch (e: unknown) {
+    if ((e as { code?: string })?.code !== 'ER_NO_SUCH_TABLE') throw e;
+    return 0;
+  }
+}
+
+async function resolveTotalRacionesTeknofoodPeriodo(
+  periodo: string,
+  connection?: Connection
+): Promise<number> {
+  const fromCsv = totalRacionesTeknofoodForPeriodo(periodo);
+  if (fromCsv > 0) return fromCsv;
+  if (connection) return queryTotalRacionesTeknofoodSql(connection);
+  return 0;
 }
 
 function sqlExprBeneficiariosPdRacion(subqBenefRacion: string): string {
@@ -533,7 +594,7 @@ async function getSummaryByPeriodo(periodo: string): Promise<ComedoresSummary> {
       `SELECT
          z.departamento AS departamento,
          z.localidad AS localidad,
-         COALESCE(tc.nombre, 'Sin clasificar') AS tipo,
+         COALESCE(tc.nombre, 'Comedores') AS tipo,
          st.nombre AS subtipo,
          COUNT(DISTINCT c.comedor_id) AS cantidad
        FROM COMEDOR c
@@ -550,7 +611,7 @@ async function getSummaryByPeriodo(periodo: string): Promise<ComedoresSummary> {
       const key = `${depto}||${loc}`;
       const tiposActuales = tiposPorInterior.get(key) ?? [];
       tiposActuales.push({
-        tipo: String(row.tipo ?? 'Sin clasificar'),
+        tipo: String(row.tipo ?? 'Comedores'),
         subtipo: row.subtipo != null && String(row.subtipo).trim() !== '' ? String(row.subtipo) : null,
         cantidad: Number(row.cantidad ?? 0),
       });
@@ -559,7 +620,7 @@ async function getSummaryByPeriodo(periodo: string): Promise<ComedoresSummary> {
     let porTipo: { tipo: string; subtipo: string | null; cantidad: number }[] = [];
     try {
       const [pt]: any = await connection.execute(
-        `SELECT COALESCE(tc.nombre, 'Sin clasificar') AS tipo,
+        `SELECT COALESCE(tc.nombre, 'Comedores') AS tipo,
                 st.nombre AS subtipo,
                 COUNT(DISTINCT c.comedor_id) AS cantidad
          FROM COMEDOR c
@@ -569,7 +630,7 @@ async function getSummaryByPeriodo(periodo: string): Promise<ComedoresSummary> {
          ORDER BY cantidad DESC`
       );
       porTipo = (pt as any[]).map((r: any) => ({
-        tipo: String(r.tipo ?? 'Sin clasificar'),
+        tipo: String(r.tipo ?? 'Comedores'),
         subtipo: r.subtipo != null && String(r.subtipo).trim() !== '' ? String(r.subtipo) : null,
         cantidad: Number(r.cantidad ?? 0),
       }));
@@ -580,7 +641,7 @@ async function getSummaryByPeriodo(periodo: string): Promise<ComedoresSummary> {
     let porTipoCapital: { tipo: string; subtipo: string | null; cantidad: number }[] = [];
     try {
       const [ptc]: any = await connection.execute(
-        `SELECT COALESCE(tc.nombre, 'Sin clasificar') AS tipo,
+        `SELECT COALESCE(tc.nombre, 'Comedores') AS tipo,
                 st.nombre AS subtipo,
                 COUNT(DISTINCT c.comedor_id) AS cantidad
          FROM COMEDOR c
@@ -592,7 +653,7 @@ async function getSummaryByPeriodo(periodo: string): Promise<ComedoresSummary> {
          ORDER BY cantidad DESC`
       );
       porTipoCapital = (ptc as any[]).map((r: any) => ({
-        tipo: String(r.tipo ?? 'Sin clasificar'),
+        tipo: String(r.tipo ?? 'Comedores'),
         subtipo: r.subtipo != null && String(r.subtipo).trim() !== '' ? String(r.subtipo) : null,
         cantidad: Number(r.cantidad ?? 0),
       }));
@@ -767,6 +828,39 @@ async function getSummaryByPeriodo(periodo: string): Promise<ComedoresSummary> {
   }
 }
 
+function getComedorRowPorPadronId(
+  padronId: string,
+  byComedorId: Map<string, Record<string, unknown>>,
+  byNumeroOficial: Map<string, Record<string, unknown>>,
+  aliasMap?: Map<string, Set<string>>
+): Record<string, unknown> | undefined {
+  for (const key of expandPadronLookupKeys(padronId, aliasMap)) {
+    const hit = byComedorId.get(key) ?? byNumeroOficial.get(key);
+    if (hit) return hit;
+  }
+  return undefined;
+}
+
+function indexComedorEnMapas(
+  c: Record<string, unknown>,
+  byComedorId: Map<string, Record<string, unknown>>,
+  byNumeroOficial: Map<string, Record<string, unknown>>,
+  aliasMap?: Map<string, Set<string>>
+): void {
+  const id = rowComedorId(c.comedor_id);
+  if (id) {
+    for (const key of expandPadronLookupKeys(id, aliasMap)) {
+      byComedorId.set(key, c);
+    }
+  }
+  const num = rowComedorId(c.numero_oficial);
+  if (num) {
+    for (const key of expandPadronLookupKeys(num, aliasMap)) {
+      byNumeroOficial.set(key, c);
+    }
+  }
+}
+
 function inferAmbitoDesdeZonaCsv(zona: string | null | undefined): Ambito {
   if (String(zona ?? '').trim().toUpperCase() === 'CAPITAL') return 'CAPITAL';
   return 'INTERIOR';
@@ -781,6 +875,7 @@ async function getRankingsRacionesConsolidadoFromCsv(params: {
   const csvRows = loadRankingRacionesForPeriodo(params.periodo);
   if (!csvRows?.length) return null;
 
+  const aliasMap = getPadronAliasMapForPeriodo(params.periodo);
   const { connection, close } = await getComedoresConnection();
   const limitVal = Math.min(Math.max(0, params.limit ?? 50), 2000);
   const offsetVal = Math.max(0, params.offset ?? 0);
@@ -795,16 +890,13 @@ async function getRankingsRacionesConsolidadoFromCsv(params: {
     const byComedorId = new Map<string, Record<string, unknown>>();
     const byNumeroOficial = new Map<string, Record<string, unknown>>();
     for (const c of comedores as Record<string, unknown>[]) {
-      const id = rowComedorId(c.comedor_id);
-      if (id) byComedorId.set(id, c);
-      const num = rowComedorId(c.numero_oficial);
-      if (num) byNumeroOficial.set(num, c);
+      indexComedorEnMapas(c, byComedorId, byNumeroOficial, aliasMap);
     }
 
     const merged: ComedoresRankingRow[] = [];
     for (const row of csvRows) {
       const pid = row.padronId;
-      const c = byComedorId.get(pid) ?? byNumeroOficial.get(pid);
+      const c = getComedorRowPorPadronId(pid, byComedorId, byNumeroOficial, aliasMap);
       const ambito = (
         c?.ambito ? String(c.ambito) : inferAmbitoDesdeZonaCsv(row.zonaCsv)
       ) as Ambito;
@@ -840,6 +932,7 @@ async function getRankingsOtrosRecursosFromCsv(params: {
   const csvRows = loadRankingOtrosRecursosForPeriodo(params.periodo);
   if (!csvRows?.length) return null;
 
+  const aliasMap = getPadronAliasMapForPeriodo(params.periodo);
   const { connection, close } = await getComedoresConnection();
   const limitVal = Math.min(Math.max(0, params.limit ?? 50), 2000);
   const offsetVal = Math.max(0, params.offset ?? 0);
@@ -854,16 +947,13 @@ async function getRankingsOtrosRecursosFromCsv(params: {
     const byComedorId = new Map<string, Record<string, unknown>>();
     const byNumeroOficial = new Map<string, Record<string, unknown>>();
     for (const c of comedores as Record<string, unknown>[]) {
-      const id = rowComedorId(c.comedor_id);
-      if (id) byComedorId.set(id, c);
-      const num = rowComedorId(c.numero_oficial);
-      if (num) byNumeroOficial.set(num, c);
+      indexComedorEnMapas(c, byComedorId, byNumeroOficial, aliasMap);
     }
 
     const merged: ComedoresRankingRow[] = [];
     for (const row of csvRows) {
       const pid = row.padronId;
-      const c = byComedorId.get(pid) ?? byNumeroOficial.get(pid);
+      const c = getComedorRowPorPadronId(pid, byComedorId, byNumeroOficial, aliasMap);
       const ambito = (
         c?.ambito ? String(c.ambito) : inferAmbitoDesdeZonaCsv(row.zonaCsv)
       ) as Ambito;
@@ -898,6 +988,7 @@ async function getRankingsPromedioBeneficiarioFromCsv(params: {
   const csvRows = loadRankingPromedioBeneficiarioForPeriodo(params.periodo);
   if (!csvRows?.length) return null;
 
+  const aliasMap = getPadronAliasMapForPeriodo(params.periodo);
   const { connection, close } = await getComedoresConnection();
   const limitVal = Math.min(Math.max(0, params.limit ?? 50), 2000);
   const offsetVal = Math.max(0, params.offset ?? 0);
@@ -912,16 +1003,13 @@ async function getRankingsPromedioBeneficiarioFromCsv(params: {
     const byComedorId = new Map<string, Record<string, unknown>>();
     const byNumeroOficial = new Map<string, Record<string, unknown>>();
     for (const c of comedores as Record<string, unknown>[]) {
-      const id = rowComedorId(c.comedor_id);
-      if (id) byComedorId.set(id, c);
-      const num = rowComedorId(c.numero_oficial);
-      if (num) byNumeroOficial.set(num, c);
+      indexComedorEnMapas(c, byComedorId, byNumeroOficial, aliasMap);
     }
 
     const merged: ComedoresRankingRow[] = [];
     for (const row of csvRows) {
       const pid = row.padronId;
-      const c = byComedorId.get(pid) ?? byNumeroOficial.get(pid);
+      const c = getComedorRowPorPadronId(pid, byComedorId, byNumeroOficial, aliasMap);
       const ambito = (
         c?.ambito ? String(c.ambito) : inferAmbitoDesdeZonaCsv(row.zonaCsv)
       ) as Ambito;
@@ -1018,6 +1106,7 @@ async function getRankings(params: {
              COALESCE(z.ambito, pd.ambito) AS ambito,
              c.responsable_nombre,
              COALESCE(SUM(pd.monto), 0) AS valor,
+             COALESCE(SUM(pd.cantidad), 0) AS cantidad_raciones,
              GREATEST(
                COALESCE(SUM(pd.beneficiarios), 0),
                (SELECT COALESCE(SUM(r2.cantidad_beneficiarios), 0) FROM RACION r2
@@ -1071,24 +1160,22 @@ async function getRankings(params: {
           if (e?.code !== 'ER_NO_SUCH_TABLE') throw e;
           rowsRacion = [];
         }
-        const baseRows = rowsRacion.length > 0 ? rowsRacion : rows;
-        const benefTotal = (baseRows as any[]).reduce((s, row) => s + Number(row.beneficiarios ?? 0), 0);
-        if (benefTotal > 0 && baseRows.length > 0) {
-          rows = (baseRows as any[]).map((row: any) => ({
-            ...row,
-            valor: (TEKNOFOOD_MONTO_FIJO_ARS * Number(row.beneficiarios ?? 0)) / benefTotal,
-            beneficiarios: Number(row.beneficiarios ?? 0),
-          }));
-          rows.sort((a: any, b: any) => Number(b.valor) - Number(a.valor));
-        }
+        rows = rowsRacion.length > 0 ? rowsRacion : rows;
       }
-      const sumRacionesValor = (rows as any[]).reduce((s, row) => s + Number(row.valor ?? 0), 0);
-      if (sumRacionesValor > 0) {
-        const k = TEKNOFOOD_MONTO_FIJO_ARS / sumRacionesValor;
-        rows = (rows as any[]).map((row: any) => ({
-          ...row,
-          valor: Number(row.valor ?? 0) * k,
-        }));
+      const totalRacionesTekno = await resolveTotalRacionesTeknofoodPeriodo(pRank, connection);
+      if (totalRacionesTekno > 0 && rows.length > 0) {
+        rows = (rows as any[]).map((row: any) => {
+          const cantidad = Math.max(
+            Number(row.cantidad_raciones ?? 0),
+            Number(row.beneficiarios ?? 0)
+          );
+          return {
+            ...row,
+            cantidad_raciones: cantidad,
+            valor: montoTeknofoodDesdeRaciones(cantidad, totalRacionesTekno),
+          };
+        });
+        rows.sort((a: any, b: any) => Number(b.valor) - Number(a.valor));
       }
       const sliced = rows.slice(offsetVal, offsetVal + limitVal);
       return sliced.map((r: any) => ({
@@ -1161,7 +1248,10 @@ async function getRankings(params: {
         if (e?.code !== 'ER_NO_SUCH_TABLE') throw e;
         rows = [];
       }
-      const mapped = (rows as Record<string, unknown>[]).map(mapFilaRankingRacionesConsolidado);
+      const totalRacionesTekno = await resolveTotalRacionesTeknofoodPeriodo(pRank, connection);
+      const mapped = (rows as Record<string, unknown>[]).map((r) =>
+        mapFilaRankingRacionesConsolidado(r, totalRacionesTekno)
+      );
       mapped.sort((a, b) => b.valor - a.valor);
       return mapped;
     }
@@ -1339,7 +1429,10 @@ async function getRankings(params: {
         if (e?.code !== 'ER_NO_SUCH_TABLE') throw e;
         rows = [];
       }
-      const mapped = (rows as Record<string, unknown>[]).map(mapFilaRankingPromedioBeneficiario);
+      const totalRacionesTekno = await resolveTotalRacionesTeknofoodPeriodo(pRank, connection);
+      const mapped = (rows as Record<string, unknown>[]).map((r) =>
+        mapFilaRankingPromedioBeneficiario(r, totalRacionesTekno)
+      );
       mapped.sort((a, b) => (b.gasto_total_mensual ?? 0) - (a.gasto_total_mensual ?? 0));
       return mapped;
     }
@@ -1678,19 +1771,10 @@ async function getComedorDetail(comedorId: string, periodo: string): Promise<Com
       gastoComp = [];
     }
 
-    let teknoPdTotalPeriodo = 0;
-    try {
-      const [tTot]: any = await connection.execute(
-        `SELECT COALESCE(SUM(pd.monto), 0) AS s
-         FROM PRESUPUESTO_DEPENDENCIA pd
-         WHERE pd.rubro = 'monto_invertido'
-           AND (pd.subrubro <=> 'teknofood' OR pd.subrubro IS NULL OR TRIM(COALESCE(pd.subrubro, '')) = '')
-           AND (TRIM(COALESCE(@cp, '')) = '' OR CONVERT(TRIM(pd.periodo) USING utf8mb4) COLLATE utf8mb4_unicode_ci <=> @cp)`
-      );
-      teknoPdTotalPeriodo = Number(tTot[0]?.s ?? 0);
-    } catch (e: any) {
-      if (e?.code !== 'ER_NO_SUCH_TABLE') throw e;
-    }
+    const totalRacionesTeknoPeriodo = await resolveTotalRacionesTeknofoodPeriodo(
+      pDet ?? '',
+      connection
+    );
 
     let gastoTotalGlobal = 0;
     try {
@@ -1766,31 +1850,42 @@ async function getComedorDetail(comedorId: string, periodo: string): Promise<Com
         )
       : null;
 
+    const csvFrescos = pDet
+      ? lookupFrescosCsvForComedor(
+          pDet,
+          rowComedorId(c.comedor_id),
+          rowComedorId(c.numero_oficial)
+        )
+      : null;
+
     if (csvTekno) {
       presupuestoDesglose = applyTeknofoodCsvToPresupuestoDesglose(presupuestoDesglose, csvTekno);
     } else {
-      const kTek = teknoPdTotalPeriodo > 0 ? TEKNOFOOD_MONTO_FIJO_ARS / teknoPdTotalPeriodo : 0;
       presupuestoDesglose = presupuestoDesglose.map((row) => {
         if (!esRubroTeknofoodPresupuesto(row.rubro, row.subrubro)) return row;
         const cant = Number(row.cantidad ?? 0);
-        if (cant > 0) {
-          return { ...row, monto: montoTeknofoodDesdeRaciones(cant) };
-        }
-        if (kTek > 0) {
-          return { ...row, monto: row.monto * kTek };
+        if (cant > 0 && totalRacionesTeknoPeriodo > 0) {
+          return {
+            ...row,
+            monto: montoTeknofoodDesdeRaciones(cant, totalRacionesTeknoPeriodo),
+          };
         }
         return row;
       });
-    }
-
-    if (csvOtros) {
-      presupuestoDesglose = applyOtrosRecursosCsvToPresupuestoDesglose(presupuestoDesglose, csvOtros);
     }
 
     presupuestoDesglose = presupuestoDesglose.map((row) => ({
       ...row,
       cantidad: escalarCantidadPresupuestoDepSemanalMensual(row.rubro, row.cantidad),
     }));
+
+    if (csvOtros) {
+      presupuestoDesglose = applyOtrosRecursosCsvToPresupuestoDesglose(presupuestoDesglose, csvOtros);
+    }
+
+    if (csvFrescos) {
+      presupuestoDesglose = applyFrescosCsvToPresupuestoDesglose(presupuestoDesglose, csvFrescos);
+    }
 
     const sumMontoRubroPd = (rubroNorm: string) =>
       presupuestoDesglose
@@ -1880,16 +1975,27 @@ async function getComedorDetail(comedorId: string, periodo: string): Promise<Com
     const frescosKgTotal = kgVerduras + kgCarnes;
 
     const becados = Number(gastoComp[0]?.becados ?? 0);
-    const refrigerio_comida = Number(gastoComp[0]?.refrigerio_comida ?? 0);
-    const carnesMonto = Number(gastoComp[0]?.carnes ?? 0);
+    let refrigerio_comida = Number(gastoComp[0]?.refrigerio_comida ?? 0);
+    let carnesMonto = Number(gastoComp[0]?.carnes ?? 0);
+    if (csvFrescos) {
+      if (csvFrescos.montoVerdurasFrutas > 0) {
+        refrigerio_comida = csvFrescos.montoVerdurasFrutas;
+      }
+      if (csvFrescos.montoCarne > 0) {
+        carnesMonto = csvFrescos.montoCarne;
+      }
+    }
     const teknoRow = presupuestoDesglose.find((row) => esRubroTeknofoodPresupuesto(row.rubro, row.subrubro));
-    const montoTeknoDetalle =
-      teknoRow && Number(teknoRow.cantidad ?? 0) > 0
-        ? montoTeknofoodDesdeRaciones(Number(teknoRow.cantidad))
-        : teknoPdTotalPeriodo > 0
-          ? (Number(gastoComp[0]?.raciones ?? 0) * TEKNOFOOD_MONTO_FIJO_ARS) / teknoPdTotalPeriodo
-          : Number(gastoComp[0]?.raciones ?? 0);
-    const raciones = montoTeknoDetalle + refrigerio_comida + carnesMonto;
+    const cantTeknoDetalle = csvTekno
+      ? csvTekno.raciones
+      : Math.max(Number(teknoRow?.cantidad ?? 0), 0);
+    let montoTeknoDetalle = Number(teknoRow?.monto ?? 0);
+    if (montoTeknoDetalle <= 0 && csvTekno && csvTekno.monto > 0) {
+      montoTeknoDetalle = csvTekno.monto;
+    }
+    if (montoTeknoDetalle <= 0 && cantTeknoDetalle > 0 && totalRacionesTeknoPeriodo > 0) {
+      montoTeknoDetalle = montoTeknofoodDesdeRaciones(cantTeknoDetalle, totalRacionesTeknoPeriodo);
+    }
     const otrosSql = safeNumber(gastoComp[0]?.otros_recursos);
     const otrosFromPd = sumMontoRubroPd('otros_recursos');
     let otros_recursos = Math.max(otrosSql, otrosFromPd);
@@ -1954,7 +2060,8 @@ async function getComedorDetail(comedorId: string, periodo: string): Promise<Com
         }
       }
     }
-    const gastoTotalComedor = raciones + becados + refrigerio_comida + carnesMonto + otros_recursos;
+    const gastoTotalComedor =
+      montoTeknoDetalle + becados + refrigerio_comida + carnesMonto + otros_recursos;
 
     return {
       comedor_id: rowComedorId(c.comedor_id),
@@ -1987,7 +2094,8 @@ async function getComedorDetail(comedorId: string, periodo: string): Promise<Com
       },
       presupuesto_desglose: presupuestoDesglose,
       composicion_gasto: {
-        raciones,
+        /** Solo Teknofood (monto_invertido/teknofood), alineado a presupuesto_desglose. */
+        raciones: montoTeknoDetalle,
         becados,
         refrigerio_comida,
         carnes: carnesMonto,

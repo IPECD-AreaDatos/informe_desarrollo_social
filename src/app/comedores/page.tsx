@@ -219,11 +219,11 @@ const RANKING_TABS: { key: GastosRankingTipo; label: string }[] = [
 
 const RANKING_TOOLTIP: Record<GastosRankingTipo, string> = {
   raciones_consolidado:
-    "Monto total mensual = carnes + frutas/verduras (presupuesto en BD) + Teknofood (raciones × $1.600 × 30 días). Cantidad de raciones = raciones Teknofood del periodo. Monto mensual por ración = monto total ÷ cantidad de raciones.",
+    "Monto total mensual = carnes + frutas/verduras (presupuesto en BD) + Teknofood (monto fijo mensual repartido: $2.118.950.400 × raciones del comedor ÷ raciones totales del periodo). Cantidad de raciones = comidas + refrigerios Teknofood. Monto mensual por ración = monto total ÷ cantidad de raciones.",
   otros_recursos:
     "Monto total = suma en BD de gas + limpieza + fumigación (rubro otros_recursos). Cantidad de beneficiarios = raciones Teknofood del periodo (comidas + refrigerios). Monto mensual por beneficiario = monto total ÷ cantidad de beneficiarios.",
   promedio_beneficiario:
-    "Monto total = mismo cálculo que Raciones (carnes + frescos + Teknofood raciones × $1.600 × 30) + mismo total que Otros recursos (gas + limpieza + fumigación en BD). Monto mensual por beneficiario = monto total ÷ beneficiarios del periodo.",
+    "Monto total = mismo cálculo que Raciones (carnes + frescos + Teknofood proporcional al padrón) + mismo total que Otros recursos (gas + limpieza + fumigación en BD). Monto mensual por beneficiario = monto total ÷ beneficiarios del periodo.",
 };
 
 const MESES_SLUG_A_NOMBRE: Record<string, string> = {
@@ -295,6 +295,13 @@ function limpiarDepartamentoEtiqueta(s: string) {
     .replace(/^dto\.?\s*de\s+/i, "")
     .replace(/^departamento\s*de\s+/i, "")
     .trim();
+}
+
+/** Leyenda del gráfico «Tipo de dependencia»: el dato en BD puede seguir siendo «Sin clasificar». */
+function etiquetaTipoDependencia(tipo: string): string {
+  const t = String(tipo ?? "").trim();
+  if (!t || /^sin\s+clasificar$/i.test(t)) return "Comedores";
+  return t;
 }
 
 /** Etiquetas de artículos de limpieza sin abreviaturas (coinciden con claves de BENEFICIO_LIMPIEZA / PRESUPUESTO_ITEM). */
@@ -396,6 +403,42 @@ function rubroPresupuestoEtiquetaLarga(rubro: string): string {
   }
 }
 
+function filaPresupuestoVisible(row: {
+  monto: number;
+  cantidad: number;
+  rubro: string;
+  subrubro: string | null;
+  unidad: string | null;
+}): boolean {
+  if (row.monto > 0 || row.cantidad > 0) return true;
+  return (
+    String(row.rubro ?? '').trim() === 'refrigerio_comida' &&
+    String(row.subrubro ?? '').trim() === 'frutas_verduras' &&
+    Boolean(String(row.unidad ?? '').trim())
+  );
+}
+
+function cantidadPresupuestoEtiqueta(row: {
+  monto: number;
+  cantidad: number;
+  rubro: string;
+  subrubro: string | null;
+  unidad: string | null;
+}): string {
+  if (row.cantidad > 0) {
+    return `${row.cantidad.toLocaleString("es-AR", { maximumFractionDigits: 0 })}${row.unidad ? ` ${row.unidad}` : ""}`;
+  }
+  if (
+    String(row.rubro ?? '').trim() === 'refrigerio_comida' &&
+    String(row.subrubro ?? '').trim() === 'frutas_verduras' &&
+    String(row.unidad ?? '').trim()
+  ) {
+    return String(row.unidad).trim();
+  }
+  if (row.monto > 0) return "No corresponde";
+  return "No corresponde";
+}
+
 function subrubroPresupuestoEtiqueta(sub: string | null | undefined): string {
   const s = String(sub ?? "").trim();
   if (!s) return "—";
@@ -447,47 +490,73 @@ function VerticalTerritorialBars({
       </div>
     );
   }
+  const PCT_ROW_H = 18;
+  const LABEL_ROW_H = 40;
+
   return (
     <div className="min-w-0 space-y-2">
       <h4 className="text-sm font-black text-slate-800 border-b border-slate-100 pb-2">{titulo}</h4>
-      <div className="flex items-stretch gap-2 sm:gap-2.5 overflow-x-auto pb-1 pt-2 min-h-[200px] [scrollbar-width:thin]">
-        {data.map((row) => {
-          const hPx = Math.max(6, (row.pct / maxPct) * BAR_MAX);
-          const pctTxt =
-            row.pct < 0.95
-              ? "<1%"
-              : `${row.pct.toLocaleString("es-AR", { maximumFractionDigits: 1 })}%`;
-          return (
-            <div
-              key={row.key}
-              className="group flex shrink-0 flex-col items-center w-12 sm:w-14 md:w-16"
-            >
-              <div className="relative flex w-full min-h-[168px] flex-1 flex-col items-center">
-                <span className="text-[10px] font-black text-slate-600 tabular-nums mb-1">{pctTxt}</span>
-                <div className="mt-auto flex h-[120px] w-full flex-col justify-end items-center">
-                  <div
-                    title={`${row.label}: ${row.cantidad.toLocaleString("es-AR")} (${row.pct.toLocaleString("es-AR", { maximumFractionDigits: 1 })}%)`}
-                    className={clsx("w-[78%] rounded-t-md shadow-sm transition-transform group-hover:scale-[1.02]", barClassName)}
-                    style={{ height: `${hPx}px` }}
-                  />
+      <div className="overflow-x-auto pb-1 pt-2 [scrollbar-width:thin]">
+        <div
+          className="flex gap-2 sm:gap-2.5"
+          style={{ minWidth: "min(100%, max-content)" }}
+        >
+          {data.map((row) => {
+            const hPx = Math.max(6, (row.pct / maxPct) * BAR_MAX);
+            const pctTxt =
+              row.pct < 0.95
+                ? "<1%"
+                : `${row.pct.toLocaleString("es-AR", { maximumFractionDigits: 1 })}%`;
+            return (
+              <div
+                key={row.key}
+                className="group flex w-12 shrink-0 flex-col items-center sm:w-14 md:w-16"
+              >
+                {/* Zona de barras: altura fija; la línea base es el borde inferior de h-[120px] */}
+                <div
+                  className="relative flex w-full flex-col items-center"
+                  style={{ height: PCT_ROW_H + BAR_MAX }}
+                >
+                  <span
+                    className="flex shrink-0 items-center justify-center text-[10px] font-black tabular-nums text-slate-600"
+                    style={{ height: PCT_ROW_H }}
+                  >
+                    {pctTxt}
+                  </span>
+                  <div className="flex h-[120px] w-full items-end justify-center">
+                    <div
+                      title={`${row.label}: ${row.cantidad.toLocaleString("es-AR")} (${row.pct.toLocaleString("es-AR", { maximumFractionDigits: 1 })}%)`}
+                      className={clsx(
+                        "w-[78%] rounded-t-md shadow-sm transition-transform group-hover:scale-[1.02]",
+                        barClassName
+                      )}
+                      style={{ height: `${hPx}px` }}
+                    />
+                  </div>
+                  <div className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 w-max max-w-[min(280px,80vw)] -translate-x-1/2 rounded-lg bg-slate-800 px-3 py-2.5 text-left text-sm font-normal leading-snug text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                    <p className="font-bold">{row.label}</p>
+                    <p className="mt-1 opacity-95">
+                      {row.cantidad.toLocaleString("es-AR")} dependencias (
+                      {row.pct.toLocaleString("es-AR", { maximumFractionDigits: 1 })}%)
+                    </p>
+                  </div>
                 </div>
-                <div className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 w-max max-w-[min(240px,70vw)] -translate-x-1/2 rounded-lg bg-slate-800 px-2.5 py-2 text-left text-[10px] font-normal leading-snug text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
-                  <p className="font-bold">{row.label}</p>
-                  <p className="mt-1 opacity-95">
-                    {row.cantidad.toLocaleString("es-AR")} dependencias (
-                    {row.pct.toLocaleString("es-AR", { maximumFractionDigits: 1 })}%)
-                  </p>
+                {/* Leyendas: altura fija debajo; no desplazan las barras */}
+                <div
+                  className="mt-2 flex w-full items-start justify-center px-0.5"
+                  style={{ height: LABEL_ROW_H }}
+                >
+                  <span
+                    className="line-clamp-3 w-full break-words text-center text-[9px] font-bold leading-tight text-slate-600 sm:text-[10px]"
+                    title={row.label}
+                  >
+                    {row.etiquetaEje}
+                  </span>
                 </div>
               </div>
-              <span
-                className="mt-2 line-clamp-3 w-full break-words text-center text-[9px] font-bold leading-tight text-slate-600 sm:text-[10px]"
-                title={row.label}
-              >
-                {row.etiquetaEje}
-              </span>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
     </div>
   );
@@ -725,7 +794,10 @@ function ComedoresPageContent() {
     const total = summary?.total_comedores ?? 0;
     const detalle = rows
       .slice(0, 8)
-      .map((r) => `${r.subtipo ? `${r.tipo} - ${r.subtipo}` : r.tipo}: ${r.cantidad.toLocaleString("es-AR")}`)
+      .map((r) => {
+        const tipo = etiquetaTipoDependencia(r.tipo);
+        return `${r.subtipo ? `${tipo} - ${r.subtipo}` : tipo}: ${r.cantidad.toLocaleString("es-AR")}`;
+      })
       .join(" | ");
     return `Total: ${total.toLocaleString("es-AR")} dependencias. Tipos: ${detalle}`;
   }, [summary]);
@@ -761,7 +833,8 @@ function ComedoresPageContent() {
     const total =
       capitalTotalDeps > 0 ? capitalTotalDeps : rows.reduce((a, r) => a + r.cantidad, 0) || 1;
     return rows.map((r, i) => {
-      const label = r.subtipo ? `${r.tipo} — ${r.subtipo}` : r.tipo;
+      const tipo = etiquetaTipoDependencia(r.tipo);
+      const label = r.subtipo ? `${tipo} — ${r.subtipo}` : tipo;
       const cantidad = r.cantidad;
       const pct = (cantidad / total) * 100;
       const etiquetaEje = label.length > 18 ? `${label.slice(0, 16)}…` : label;
@@ -980,8 +1053,8 @@ function ComedoresPageContent() {
             </button>
           ))}
         </div>
-        <p className="text-[11px] text-slate-400 mb-3 sm:mb-4 flex items-start gap-1.5 leading-relaxed">
-          <Info className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+        <p className="text-sm text-slate-400 mb-3 sm:mb-4 flex items-start gap-1.5 leading-relaxed">
+          <Info className="w-4 h-4 mt-0.5 shrink-0" />
           <span>{RANKING_TOOLTIP[rankingTipo]}</span>
         </p>
         <div className="mb-4 sm:mb-6 relative">
@@ -1054,7 +1127,7 @@ function ComedoresPageContent() {
                     />
                     <span className="relative group shrink-0 pt-0.5">
                       <Info className="h-3.5 w-3.5 shrink-0 cursor-help text-slate-400" />
-                      <span className="pointer-events-none absolute right-0 top-full z-50 mt-2 w-72 max-w-[85vw] rounded-lg bg-slate-800 p-2.5 text-left text-[11px] font-normal leading-snug text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
+                      <span className="pointer-events-none absolute right-0 top-full z-50 mt-2 w-80 max-w-[90vw] rounded-lg bg-slate-800 p-3 text-left text-sm font-normal leading-snug text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100">
                         {RANKING_TOOLTIP[rankingTipo]}
                       </span>
                     </span>
@@ -1314,12 +1387,12 @@ function ComedoresPageContent() {
                         <dt className="font-bold text-slate-600">Tipo de dependencia</dt>
                         <dd className="mt-0.5 break-words">
                           {(() => {
-                            const t = detail.tipo_nombre?.trim();
+                            const raw = detail.tipo_nombre?.trim();
+                            const t =
+                              !raw || raw.toLowerCase() === "sin clasificar" ? "Comedores" : raw;
                             const s = detail.subtipo_nombre?.trim();
-                            if (t && s) return `${t} (${s})`;
-                            if (t) return t;
-                            if (s) return s;
-                            return "No corresponde";
+                            if (s) return `${t} (${s})`;
+                            return t;
                           })()}
                         </dd>
                       </div>
@@ -1386,9 +1459,9 @@ function ComedoresPageContent() {
                       mensuales.
                     </p>
                     {(() => {
-                      const filasPresupuesto = (detail.presupuesto_desglose ?? []).filter(
-                        (row) => row.monto > 0 || row.cantidad > 0
-                      );
+                      const filasPresupuesto = (detail.presupuesto_desglose ?? [])
+                        .filter(filaPresupuestoVisible)
+                        .sort((a, b) => b.monto - a.monto);
                       return filasPresupuesto.length > 0 ? (
                         <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 overflow-x-auto">
                           <p className="text-xs font-bold text-slate-700 mb-2">Desglose presupuestario por rubro (esta dependencia)</p>
@@ -1422,12 +1495,7 @@ function ComedoresPageContent() {
                                   row.monto > 0
                                     ? `$${row.monto.toLocaleString("es-AR", { maximumFractionDigits: 0 })}`
                                     : "No corresponde";
-                                const cantStr =
-                                  row.cantidad > 0
-                                    ? `${row.cantidad.toLocaleString("es-AR", { maximumFractionDigits: 0 })}${row.unidad ? ` ${row.unidad}` : ""}`
-                                    : row.monto > 0
-                                      ? "No corresponde"
-                                      : "No corresponde";
+                                const cantStr = cantidadPresupuestoEtiqueta(row);
                                 return (
                                   <tr key={`${row.rubro}-${row.subrubro}-${idx}`} className="border-b border-slate-100/80">
                                     <td className="py-2 pr-2 font-semibold text-slate-800">{rubroLabel}</td>
@@ -1616,7 +1684,7 @@ function ComedoresPageContent() {
                         {
                           key: "raciones",
                           label: "Raciones y monto invertido (Teknofood)",
-                          tooltip: `Costo total de raciones y Teknofood presupuestado para esta dependencia en ${mesAnioActual}.`,
+                          tooltip: `Solo monto Teknofood (monto_invertido) de esta dependencia en ${mesAnioActual}, igual que en el desglose presupuestario por rubro.`,
                           value: comp.raciones,
                         },
                         {
@@ -1643,7 +1711,7 @@ function ComedoresPageContent() {
                           tooltip: `Costo total de otros recursos presupuestado para esta dependencia en ${mesAnioActual}.`,
                           value: comp.otros_recursos,
                         },
-                      ];
+                      ].sort((a, b) => b.value - a.value);
                       return (
                         <>
                           <p className="text-xs text-slate-600 leading-relaxed">
