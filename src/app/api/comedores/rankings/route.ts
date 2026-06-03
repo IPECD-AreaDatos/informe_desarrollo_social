@@ -11,6 +11,7 @@ const TIPOS: RankingTipo[] = [
   'raciones',
   'raciones_consolidado',
   'becados',
+  'becarios',
   'refrigerio_comida',
   'carnes',
   'otros_recursos',

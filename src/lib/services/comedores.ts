@@ -42,12 +42,14 @@ const MESES_SLUG: Record<string, number> = {
   diciembre: 12,
 };
 
-/**
- * Totales de becados validados para el informe (cuando el resumen en base aún no coincide).
- * Clave = slug de periodo (`marzo-2026`), igual que el selector de la app.
- */
-const BECADOS_RESUMEN_OFICIAL: Record<string, { monto: number; cantidad: number }> = {
-  'marzo-2026': { monto: 2_255_691, cantidad: 637 },
+/** Monto interior de referencia cuando no hay fila en PRESUPUESTO_RESUMEN (marzo 2026). */
+const BECADOS_MONTO_INTERIOR_FALLBACK: Record<string, number> = {
+  'marzo-2026': 5_361_571,
+};
+
+/** Cantidad interior validada (marzo 2026). */
+const BECADOS_CANTIDAD_INTERIOR_FALLBACK: Record<string, number> = {
+  'marzo-2026': 22,
 };
 
 /** IDs de comedor en DB son VARCHAR (1, M01, F-16, …). */
@@ -244,6 +246,7 @@ export type RankingTipo =
   | 'raciones'
   | 'raciones_consolidado'
   | 'becados'
+  | 'becarios'
   | 'refrigerio_comida'
   | 'carnes'
   | 'otros_recursos'
@@ -274,7 +277,11 @@ export interface ComedoresSummary {
     monto_invertido_cantidad: number;
     becados_monto: number;
     becados_cantidad: number;
-    /** Desde Anexo II: cantidades por ámbito (texto del Excel) */
+    becados_monto_capital: number;
+    becados_monto_interior: number;
+    becados_cantidad_capital: number;
+    becados_cantidad_interior: number;
+    /** Cantidad por ámbito (alias de becados_cantidad_*) */
     becados_capital: number;
     becados_interior: number;
     refrigerio_comida_monto: number;
@@ -323,6 +330,72 @@ export interface ComedoresRankingRow {
   monto_teknofood?: number;
   /** Cantidad de raciones (presupuesto) asociada a Teknofood. */
   cantidad_raciones?: number;
+  /** Ranking tipo `becarios` (Capital). */
+  codigo_csv?: number;
+  apellido?: string | null;
+  nombre_persona?: string | null;
+  localidad?: string | null;
+  funcion?: string | null;
+}
+
+async function queryBecadosCapitalResumen(connection: Connection): Promise<{ monto: number; cantidad: number }> {
+  try {
+    const [rows]: any = await connection.execute(
+      `SELECT COUNT(*) AS n, COALESCE(SUM(l.monto_neto), 0) AS s
+       FROM BECARIO_CAPITAL_LIQUIDACION l
+       WHERE (TRIM(COALESCE(@cp, '')) = ''
+          OR CONVERT(TRIM(l.periodo) USING utf8mb4) COLLATE utf8mb4_unicode_ci <=> @cp)`
+    );
+    return {
+      cantidad: Number(rows[0]?.n ?? 0),
+      monto: safeNumber(rows[0]?.s),
+    };
+  } catch (e: unknown) {
+    if ((e as { code?: string })?.code === 'ER_NO_SUCH_TABLE') return { monto: 0, cantidad: 0 };
+    throw e;
+  }
+}
+
+async function queryBecadosInteriorResumen(
+  connection: Connection,
+  periodoSlug: string
+): Promise<{ monto: number; cantidad: number }> {
+  let cantidad = 0;
+  let monto = 0;
+  try {
+    const [pc]: any = await connection.execute(
+      `SELECT COUNT(*) AS n FROM BECARIO_LINEA bl
+       WHERE bl.tipo_linea = 'PERSONA'
+         AND UPPER(TRIM(COALESCE(bl.ambito, ''))) = 'INTERIOR'
+         AND (TRIM(COALESCE(bl.apellido, '')) <> '' OR TRIM(COALESCE(bl.nombre, '')) <> '')`
+    );
+    cantidad = Number(pc[0]?.n ?? 0);
+  } catch (e: unknown) {
+    if ((e as { code?: string })?.code !== 'ER_NO_SUCH_TABLE') throw e;
+  }
+  try {
+    const [pm]: any = await connection.execute(
+      `SELECT COALESCE((
+         SELECT pr.monto_total FROM PRESUPUESTO_RESUMEN pr
+         WHERE pr.rubro = 'becados'
+           AND TRIM(COALESCE(pr.subrubro, '')) = 'interior'
+           AND (TRIM(COALESCE(@cp, '')) = ''
+             OR CONVERT(TRIM(pr.periodo) USING utf8mb4) COLLATE utf8mb4_unicode_ci <=> @cp)
+         ORDER BY pr.resumen_id DESC LIMIT 1
+       ), 0) AS m`
+    );
+    monto = safeNumber(pm[0]?.m);
+  } catch (e: unknown) {
+    if ((e as { code?: string })?.code !== 'ER_NO_SUCH_TABLE') throw e;
+  }
+  if (monto <= 0 && periodoSlug) {
+    monto = BECADOS_MONTO_INTERIOR_FALLBACK[periodoSlug] ?? 0;
+  }
+  const cantidadOficial = BECADOS_CANTIDAD_INTERIOR_FALLBACK[periodoSlug];
+  if (cantidadOficial != null && cantidadOficial > 0) {
+    cantidad = cantidadOficial;
+  }
+  return { monto, cantidad };
 }
 
 export interface ComedorDetail {
@@ -577,6 +650,34 @@ async function getSummaryByPeriodo(periodo: string): Promise<ComedoresSummary> {
     } catch (e: any) {
       if (e?.code !== 'ER_NO_SUCH_TABLE') throw e;
     }
+
+    const becadosCapitalRes = await queryBecadosCapitalResumen(connection);
+    const becadosInteriorRes = await queryBecadosInteriorResumen(connection, pSl);
+    const becadosCantidadCapital = becadosCapitalRes.cantidad;
+    const becadosCantidadInterior = becadosInteriorRes.cantidad;
+    const becadosMontoCapital = becadosCapitalRes.monto;
+    const becadosMontoInterior = becadosInteriorRes.monto;
+    const becadosMontoTotal = becadosMontoInterior + becadosMontoCapital;
+    const becadosCantidadTotal =
+      becadosCantidadCapital > 0 && becadosCantidadInterior > 0
+        ? becadosCantidadCapital + becadosCantidadInterior
+        : becadosCantidadCapital > 0
+          ? becadosCantidadCapital + becadosCantidadInterior
+          : (() => {
+              const m0 = montos[0] as Record<string, unknown> | undefined;
+              const num = (k: string) => {
+                const raw = m0?.[k] ?? m0?.[k.toLowerCase()];
+                const n = Number(raw ?? 0);
+                return Number.isFinite(n) ? n : 0;
+              };
+              const tot = num('becados_cantidad');
+              const cap = num('becados_capital');
+              const int = num('becados_interior');
+              if (tot > 0) return tot;
+              if (cap > 0 && int > 0) return cap + int;
+              if (becariosPersonasCount > 0) return becariosPersonasCount;
+              return cap + int;
+            })();
     const [zonasCapital]: any = await connection.execute(
       `SELECT z.nombre AS zona, COUNT(DISTINCT c.comedor_id) AS cantidad
        FROM COMEDOR c JOIN ZONA z ON c.zona_id = z.zona_id
@@ -737,30 +838,17 @@ async function getSummaryByPeriodo(periodo: string): Promise<ComedoresSummary> {
       montos: {
         monto_invertido_total: TEKNOFOOD_MONTO_FIJO_ARS,
         monto_invertido_cantidad: Number(montos[0]?.monto_invertido_cantidad ?? 0),
-        becados_monto: BECADOS_RESUMEN_OFICIAL[pSl]?.monto ?? Number(montos[0]?.becados_monto ?? 0),
-        becados_cantidad: (() => {
-          const oficial = BECADOS_RESUMEN_OFICIAL[pSl];
-          if (oficial) return oficial.cantidad;
-          const m0 = montos[0] as Record<string, unknown> | undefined;
-          const num = (k: string) => {
-            const raw = m0?.[k] ?? m0?.[k.toLowerCase()];
-            const n = Number(raw ?? 0);
-            return Number.isFinite(n) ? n : 0;
-          };
-          const tot = num('becados_cantidad');
-          const cap = num('becados_capital');
-          const int = num('becados_interior');
-          const suma = cap + int;
-          const sumSql = num('becados_suma_cap_int');
-          if (tot > 0) return tot;
-          if (cap > 0 && int > 0) return suma;
-          if (becariosPersonasCount > 0) return becariosPersonasCount;
-          if (sumSql > 0 && cap > 0) return sumSql;
-          if (suma > 0 && cap > 0) return suma;
-          return 0;
-        })(),
-        becados_capital: Number(montos[0]?.becados_capital ?? 0),
-        becados_interior: Number(montos[0]?.becados_interior ?? 0),
+        becados_monto:
+          becadosMontoTotal > 0
+            ? becadosMontoTotal
+            : Number(montos[0]?.becados_monto ?? 0),
+        becados_cantidad: becadosCantidadTotal,
+        becados_monto_capital: becadosMontoCapital,
+        becados_monto_interior: becadosMontoInterior,
+        becados_cantidad_capital: becadosCantidadCapital,
+        becados_cantidad_interior: becadosCantidadInterior,
+        becados_capital: becadosCantidadCapital,
+        becados_interior: becadosCantidadInterior,
         refrigerio_comida_monto: Number(montos[0]?.refrigerio_comida_monto ?? 0),
         refrigerio_verduras_kg: (() => {
           const fromPr = Number(montos[0]?.refrigerio_verduras_kg ?? 0);
@@ -1038,6 +1126,52 @@ async function getRankingsPromedioBeneficiarioFromCsv(params: {
   }
 }
 
+async function getRankingsBecariosCapital(params: {
+  periodo: string;
+  limit?: number;
+  offset?: number;
+}): Promise<ComedoresRankingRow[]> {
+  const limitVal = Math.min(Math.max(0, params.limit ?? 50), 2000);
+  const offsetVal = Math.max(0, params.offset ?? 0);
+  const { connection, close } = await getComedoresConnection();
+  try {
+    const pRank = String(params.periodo ?? '').trim();
+    await connection.execute(`SET @cp = CONVERT(? USING utf8mb4) COLLATE utf8mb4_unicode_ci`, [pRank]);
+    const [rows]: any = await connection.execute(
+      `SELECT b.codigo_csv, b.apellido, b.nombre, b.localidad, b.funcion, l.monto_neto
+       FROM BECARIO_CAPITAL b
+       INNER JOIN BECARIO_CAPITAL_LIQUIDACION l ON l.becario_id = b.becario_id
+       WHERE (TRIM(COALESCE(@cp, '')) = ''
+          OR CONVERT(TRIM(l.periodo) USING utf8mb4) COLLATE utf8mb4_unicode_ci <=> @cp)
+       ORDER BY l.monto_neto DESC
+       LIMIT ${limitVal} OFFSET ${offsetVal}`
+    );
+    return (rows as Record<string, unknown>[]).map((r) => {
+      const apellido = String(r.apellido ?? '').trim();
+      const nombreP = String(r.nombre ?? '').trim();
+      return {
+        comedor_id: String(r.codigo_csv ?? ''),
+        nombre: [apellido, nombreP].filter(Boolean).join(', ') || 'Sin nombre',
+        zona_nombre: r.localidad != null ? String(r.localidad) : null,
+        ambito: 'CAPITAL' as Ambito,
+        responsable_nombre: r.funcion != null ? String(r.funcion) : null,
+        valor: safeNumber(r.monto_neto),
+        unidad: '$',
+        codigo_csv: Number(r.codigo_csv ?? 0),
+        apellido: apellido || null,
+        nombre_persona: nombreP || null,
+        localidad: r.localidad != null ? String(r.localidad) : null,
+        funcion: r.funcion != null ? String(r.funcion) : null,
+      };
+    });
+  } catch (e: unknown) {
+    if ((e as { code?: string })?.code === 'ER_NO_SUCH_TABLE') return [];
+    throw e;
+  } finally {
+    await close();
+  }
+}
+
 async function getRankings(params: {
   periodo: string;
   tipo: RankingTipo;
@@ -1047,6 +1181,14 @@ async function getRankings(params: {
 }): Promise<ComedoresRankingRow[]> {
   const limitVal = Math.min(Math.max(0, params.limit ?? 50), 2000);
   const offsetVal = Math.max(0, params.offset ?? 0);
+
+  if (params.tipo === 'becarios') {
+    return getRankingsBecariosCapital({
+      periodo: params.periodo,
+      limit: limitVal,
+      offset: offsetVal,
+    });
+  }
 
   if (params.tipo === 'raciones_consolidado') {
     const fromCsv = await getRankingsRacionesConsolidadoFromCsv(params);

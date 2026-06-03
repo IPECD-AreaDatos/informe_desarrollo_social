@@ -29,7 +29,11 @@ import { KPICard } from "@/components/KPICard";
 import { clsx } from "clsx";
 
 /** Pestañas visibles del ranking por gastos (coinciden con `tipo` de la API). */
-type GastosRankingTipo = "raciones_consolidado" | "otros_recursos" | "promedio_beneficiario";
+type GastosRankingTipo =
+  | "raciones_consolidado"
+  | "otros_recursos"
+  | "promedio_beneficiario"
+  | "becarios";
 
 /** Coincide con el tope del endpoint `/api/comedores/rankings` (máx. filas que se cargan del servidor). */
 const RANKING_FETCH_LIMIT = 2000;
@@ -57,6 +61,10 @@ interface SummaryData {
     monto_invertido_cantidad: number;
     becados_monto: number;
     becados_cantidad: number;
+    becados_monto_capital?: number;
+    becados_monto_interior?: number;
+    becados_cantidad_capital?: number;
+    becados_cantidad_interior?: number;
     becados_capital?: number;
     becados_interior?: number;
     refrigerio_comida_monto: number;
@@ -92,6 +100,11 @@ interface RankingRow {
   gasto_total_mensual?: number;
   monto_teknofood?: number;
   cantidad_raciones?: number;
+  codigo_csv?: number;
+  apellido?: string | null;
+  nombre_persona?: string | null;
+  localidad?: string | null;
+  funcion?: string | null;
 }
 
 /** Fila del ranking con campos derivados para la tabla. */
@@ -107,7 +120,15 @@ type RankingTablaRow = RankingRow & {
   montoParaOrden: number;
 };
 
-type SortKey = "nombre" | "monto_total" | "monto_por_beneficiario" | "beneficiarios";
+type SortKey =
+  | "nombre"
+  | "monto_total"
+  | "monto_por_beneficiario"
+  | "beneficiarios"
+  | "codigo_csv"
+  | "apellido"
+  | "localidad"
+  | "funcion";
 type RankingAmbitoFilter = "TODOS" | "CAPITAL" | "INTERIOR";
 
 function cmpNullableNumberRaw(a: number | null | undefined, b: number | null | undefined): number {
@@ -215,6 +236,7 @@ const RANKING_TABS: { key: GastosRankingTipo; label: string }[] = [
   },
   { key: "otros_recursos", label: "Otros recursos" },
   { key: "promedio_beneficiario", label: "Promedio por beneficiario" },
+  { key: "becarios", label: "Becarios" },
 ];
 
 const RANKING_TOOLTIP: Record<GastosRankingTipo, string> = {
@@ -224,6 +246,8 @@ const RANKING_TOOLTIP: Record<GastosRankingTipo, string> = {
     "Monto total = suma en BD de gas + limpieza + fumigación (rubro otros_recursos). Cantidad de beneficiarios = raciones Teknofood del periodo (comidas + refrigerios). Monto mensual por beneficiario = monto total ÷ cantidad de beneficiarios.",
   promedio_beneficiario:
     "Monto total = mismo cálculo que Raciones (carnes + frescos + Teknofood proporcional al padrón) + mismo total que Otros recursos (gas + limpieza + fumigación en BD). Monto mensual por beneficiario = monto total ÷ beneficiarios del periodo.",
+  becarios:
+    "Listado de becarios de Capital con monto neto mensual del periodo seleccionado. La participación relativa se calcula sobre el total de montos netos de Capital en ese mes.",
 };
 
 const MESES_SLUG_A_NOMBRE: Record<string, string> = {
@@ -604,8 +628,16 @@ function ComedoresPageContent() {
   }, [periodo]);
 
   useEffect(() => {
+    if (rankingTipo === "becarios") {
+      setSortKey("monto_total");
+      setSortDir("desc");
+    }
+  }, [rankingTipo]);
+
+  useEffect(() => {
     setLoadingRankings(true);
-    const ambitoParam = rankingAmbito === "TODOS" ? "" : `&ambito=${rankingAmbito}`;
+    const ambitoParam =
+      rankingTipo === "becarios" || rankingAmbito === "TODOS" ? "" : `&ambito=${rankingAmbito}`;
     fetch(
       apiUrl(
         `/api/comedores/rankings?periodo=${encodeURIComponent(periodo)}&tipo=${rankingTipo}&limit=${RANKING_FETCH_LIMIT}${ambitoParam}`
@@ -622,7 +654,59 @@ function ComedoresPageContent() {
     setRankingPage(1);
   }, [periodo, rankingTipo, rankingAmbito, searchTerm]);
 
+  const becariosRankingRows = useMemo(() => {
+    if (rankingTipo !== "becarios") return [];
+    const totalCapital =
+      summary?.montos?.becados_monto_capital ??
+      rankings.reduce((s, r) => s + Number(r.valor ?? 0), 0);
+    const q = searchTerm.trim().toLowerCase();
+    let rows = rankings.map((r) => {
+      const monto = Number(r.valor ?? 0);
+      const pct = totalCapital > 0 ? (monto / totalCapital) * 100 : null;
+      return {
+        ...r,
+        monto,
+        pctParticipacionRelativa: pct,
+        montoParaOrden: monto,
+      };
+    });
+    if (q) {
+      rows = rows.filter((r) => {
+        const bag = [
+          r.codigo_csv,
+          r.apellido,
+          r.nombre_persona,
+          r.nombre,
+          r.localidad,
+          r.funcion,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        return bag.includes(q);
+      });
+    }
+    rows.sort((a, b) => {
+      let cmp = 0;
+      if (sortKey === "codigo_csv") cmp = Number(a.codigo_csv ?? 0) - Number(b.codigo_csv ?? 0);
+      else if (sortKey === "apellido") cmp = String(a.apellido ?? "").localeCompare(String(b.apellido ?? ""), "es");
+      else if (sortKey === "nombre") {
+        cmp = String(a.nombre_persona ?? a.nombre ?? "").localeCompare(
+          String(b.nombre_persona ?? b.nombre ?? ""),
+          "es"
+        );
+      } else if (sortKey === "localidad") {
+        cmp = String(a.localidad ?? "").localeCompare(String(b.localidad ?? ""), "es");
+      } else if (sortKey === "funcion") {
+        cmp = String(a.funcion ?? "").localeCompare(String(b.funcion ?? ""), "es");
+      } else cmp = a.montoParaOrden - b.montoParaOrden;
+      return sortDir === "asc" ? cmp : -cmp;
+    });
+    return rows;
+  }, [rankingTipo, rankings, searchTerm, sortKey, sortDir, summary?.montos?.becados_monto_capital]);
+
   const rankingRows = useMemo(() => {
+    if (rankingTipo === "becarios") return [];
     const usaDenominadorFilas =
       (rankingTipo === "raciones_consolidado" ||
         rankingTipo === "otros_recursos" ||
@@ -714,17 +798,25 @@ function ComedoresPageContent() {
     return rows;
   }, [rankings, rankingTipo, searchTerm, sortDir, sortKey, summary?.montos]);
 
-  useEffect(() => {
-    const paginas = Math.max(1, Math.ceil(rankingRows.length / rankingPageSize));
-    setRankingPage((prev) => Math.min(prev, paginas));
-  }, [rankingRows.length, rankingPageSize]);
+  const rankingRowsActivos = rankingTipo === "becarios" ? becariosRankingRows : rankingRows;
 
-  const rankingPaginasTotal = Math.max(1, Math.ceil(rankingRows.length / rankingPageSize));
+  useEffect(() => {
+    const paginas = Math.max(1, Math.ceil(rankingRowsActivos.length / rankingPageSize));
+    setRankingPage((prev) => Math.min(prev, paginas));
+  }, [rankingRowsActivos.length, rankingPageSize]);
+
+  const rankingPaginasTotal = Math.max(1, Math.ceil(rankingRowsActivos.length / rankingPageSize));
   const rankingPageClamped = Math.min(Math.max(1, rankingPage), rankingPaginasTotal);
-  const rankingRowsPagina = useMemo(() => {
+  const rankingRowsPagina = useMemo((): RankingTablaRow[] => {
     const start = (rankingPageClamped - 1) * rankingPageSize;
+    if (rankingTipo === "becarios") return [];
     return rankingRows.slice(start, start + rankingPageSize);
-  }, [rankingRows, rankingPageClamped, rankingPageSize]);
+  }, [rankingTipo, rankingRows, rankingPageClamped, rankingPageSize]);
+
+  const becariosRowsPagina = useMemo(() => {
+    const start = (rankingPageClamped - 1) * rankingPageSize;
+    return becariosRankingRows.slice(start, start + rankingPageSize);
+  }, [becariosRankingRows, rankingPageClamped, rankingPageSize]);
 
   const sinPromedioDatos =
     rankingTipo === "promedio_beneficiario" &&
@@ -756,8 +848,8 @@ function ComedoresPageContent() {
     return { min, max };
   }, [rankingTipo, rankings]);
 
-  const rankingTablaColumnas = 6;
-  const rankingTablaMinAncho = "min-w-[860px]";
+  const rankingTablaColumnas = rankingTipo === "becarios" ? 7 : 6;
+  const rankingTablaMinAncho = rankingTipo === "becarios" ? "min-w-[960px]" : "min-w-[860px]";
   const presupuestoFvCantidades = useMemo(() => {
     const v = summary?.montos?.refrigerio_verduras_kg ?? 0;
     const f = summary?.montos?.refrigerio_frutas_unidades ?? 0;
@@ -940,10 +1032,19 @@ function ComedoresPageContent() {
         />
         <KPICard
           label={labelsKpiConPeriodo.becados}
-          value={`$${(5_361_571).toLocaleString("es-AR", { maximumFractionDigits: 0 })}`}
+          value={`$${(summary?.montos?.becados_monto ?? 0).toLocaleString("es-AR", { maximumFractionDigits: 0 })}`}
           secondaryValue={(summary?.montos?.becados_cantidad ?? 0).toLocaleString("es-AR", { maximumFractionDigits: 0 })}
           secondaryLabel="Cantidad de personas"
-          noteText="Montos correspondientes a becados del interior."
+          noteText={(() => {
+            const cap =
+              summary?.montos?.becados_cantidad_capital ?? summary?.montos?.becados_capital ?? 0;
+            const int =
+              summary?.montos?.becados_cantidad_interior ?? summary?.montos?.becados_interior ?? 0;
+            if (cap > 0 || int > 0) {
+              return `Capital: ${cap.toLocaleString("es-AR")}\nInterior: ${int.toLocaleString("es-AR")}`;
+            }
+            return undefined;
+          })()}
           icon={Users}
           loading={loadingSummary}
           color="#1F5D9B"
@@ -1037,6 +1138,7 @@ function ComedoresPageContent() {
             </button>
           ))}
         </div>
+        {rankingTipo !== "becarios" && (
         <div className="flex flex-wrap gap-2 mb-4">
           {(["TODOS", "CAPITAL", "INTERIOR"] as const).map((amb) => (
             <button
@@ -1053,6 +1155,7 @@ function ComedoresPageContent() {
             </button>
           ))}
         </div>
+        )}
         <p className="text-sm text-slate-400 mb-3 sm:mb-4 flex items-start gap-1.5 leading-relaxed">
           <Info className="w-4 h-4 mt-0.5 shrink-0" />
           <span>{RANKING_TOOLTIP[rankingTipo]}</span>
@@ -1062,7 +1165,11 @@ function ComedoresPageContent() {
           <input
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Buscar por dependencia, responsable o zona..."
+            placeholder={
+              rankingTipo === "becarios"
+                ? "Buscar por apellido, nombre, localidad o función..."
+                : "Buscar por dependencia, responsable o zona..."
+            }
             className="w-full pl-10 pr-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-700 focus:ring-2 focus:ring-green-500/20 focus:border-green-500"
           />
         </div>
@@ -1097,6 +1204,64 @@ function ComedoresPageContent() {
           </div>
         )}
         <div className="overflow-x-auto -mx-1">
+          {rankingTipo === "becarios" ? (
+          <table className={clsx("w-full text-left text-xs sm:text-sm", rankingTablaMinAncho)}>
+            <thead>
+              <tr className="border-b border-slate-200 text-slate-700">
+                <th className="pb-3 pr-3 align-bottom font-bold normal-case">
+                  <RankingSortHeader label="ID" columnKey="codigo_csv" activeKey={sortKey} dir={sortDir} onSort={onSort} />
+                </th>
+                <th className="pb-3 pr-3 align-bottom font-bold normal-case">
+                  <RankingSortHeader label="Apellido" columnKey="apellido" activeKey={sortKey} dir={sortDir} onSort={onSort} />
+                </th>
+                <th className="pb-3 pr-3 align-bottom font-bold normal-case">
+                  <RankingSortHeader label="Nombre" columnKey="nombre" activeKey={sortKey} dir={sortDir} onSort={onSort} />
+                </th>
+                <th className="pb-3 pr-3 align-bottom font-bold normal-case">
+                  <RankingSortHeader label="Localidad" columnKey="localidad" activeKey={sortKey} dir={sortDir} onSort={onSort} />
+                </th>
+                <th className="pb-3 pr-3 align-bottom font-bold normal-case">
+                  <RankingSortHeader label="Función" columnKey="funcion" activeKey={sortKey} dir={sortDir} onSort={onSort} />
+                </th>
+                <th className="pb-3 pr-3 text-right align-bottom font-bold normal-case">
+                  <RankingSortHeader label="Monto neto mensual" columnKey="monto_total" activeKey={sortKey} dir={sortDir} onSort={onSort} />
+                </th>
+                <th className="pb-3 pr-3 text-right align-bottom font-bold normal-case">Participación relativa</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loadingRankings ? (
+                <tr>
+                  <td colSpan={7} className="py-8 text-center text-slate-400">Cargando...</td>
+                </tr>
+              ) : !becariosRankingRows.length ? (
+                <tr>
+                  <td colSpan={7} className="py-8 text-center text-sm font-medium text-slate-500">
+                    Sin becarios de Capital cargados para este periodo.
+                  </td>
+                </tr>
+              ) : (
+                becariosRowsPagina.map((r, i) => (
+                  <tr key={r.codigo_csv ?? `bec-${i}`} className="border-b border-slate-50">
+                    <td className="py-3 pr-3 font-semibold text-slate-800 tabular-nums">{r.codigo_csv ?? "—"}</td>
+                    <td className="py-3 pr-3 text-slate-800">{r.apellido ?? "—"}</td>
+                    <td className="py-3 pr-3 text-slate-800">{r.nombre_persona ?? "—"}</td>
+                    <td className="py-3 pr-3 text-slate-600">{r.localidad ?? "—"}</td>
+                    <td className="py-3 pr-3 text-slate-600">{r.funcion ?? "—"}</td>
+                    <td className="py-3 pr-3 text-right font-black text-slate-800 whitespace-nowrap">
+                      ${Number(r.montoParaOrden ?? r.valor ?? 0).toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </td>
+                    <td className="py-3 pr-3 text-right text-slate-600 whitespace-nowrap">
+                      {r.pctParticipacionRelativa != null
+                        ? `${r.pctParticipacionRelativa.toLocaleString("es-AR", { maximumFractionDigits: 1 })}%`
+                        : "—"}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+          ) : (
           <table className={clsx("w-full text-left text-xs sm:text-sm", rankingTablaMinAncho)}>
             <thead>
               <tr className="border-b border-slate-200 text-slate-700">
@@ -1250,14 +1415,15 @@ function ComedoresPageContent() {
               )}
             </tbody>
           </table>
+          )}
         </div>
-        {!loadingRankings && rankingRows.length > 0 && (
+        {!loadingRankings && rankingRowsActivos.length > 0 && (
           <div className="mt-4 flex flex-col gap-3 border-t border-slate-100 pt-4 text-sm text-slate-600 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
               <span className="font-semibold text-slate-700">
                 {(rankingPageClamped - 1) * rankingPageSize + 1} —{" "}
-                {Math.min(rankingPageClamped * rankingPageSize, rankingRows.length)} de{" "}
-                {rankingRows.length.toLocaleString("es-AR")} en la tabla
+                {Math.min(rankingPageClamped * rankingPageSize, rankingRowsActivos.length)} de{" "}
+                {rankingRowsActivos.length.toLocaleString("es-AR")} en la tabla
               </span>
               {rankings.length >= RANKING_FETCH_LIMIT && (
                 <span className="text-xs font-medium text-amber-800">
