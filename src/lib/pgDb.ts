@@ -1,0 +1,30 @@
+import { Pool } from 'pg';
+
+let pool: Pool | null = null;
+
+/**
+ * Returns a shared connection pool for the PostgreSQL database (DBB1).
+ */
+export function getPgPool(): Pool {
+    if (!pool) {
+        pool = new Pool({
+            host: process.env.HOST_DBB1,
+            port: 5432,
+            user: process.env.USER_DBB1,
+            password: process.env.PASSWORD_DBB1,
+            database: (process.env.BASE_DESARROLLO_SOCIAL || '').trim(),
+            max: 10,
+            idleTimeoutMillis: 30000,
+            connectionTimeoutMillis: 5000,
+        });
+    }
+    return pool;
+}
+
+/**
+ * Utility to run a query against the PostgreSQL database.
+ */
+export async function queryPg(text: string, params?: any[]) {
+    const poolInstance = getPgPool();
+    return poolInstance.query(text, params);
+}

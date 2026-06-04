@@ -1,9 +1,10 @@
 "use client";
 
-import { Calendar, ChevronDown, Check } from "lucide-react";
+import { Calendar, ChevronDown, Check, LogOut } from "lucide-react";
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { clsx } from "clsx";
+import { apiUrl } from "@/lib/apiBase";
 
 const getDynamicPeriods = () => {
     const now = new Date();
@@ -79,92 +80,112 @@ function HeaderContent({ hideDatePicker = false }: { hideDatePicker?: boolean })
         router.push(`${pathname}?${params.toString()}`);
     };
 
+    const handleLogout = async () => {
+        try {
+            await fetch(apiUrl('/api/auth/logout'), { method: 'POST' });
+            router.push('/login');
+            router.refresh();
+        } catch (e) {
+            console.error('Error logging out:', e);
+        }
+    };
+
     return (
-        <header className="flex justify-between items-center mb-10">
-            <div className="space-y-1">
-                <h2 className="text-3xl font-black text-slate-900 tracking-tight">
-                    Tablero Ejecutivo Provincial
-                </h2>
-                <div className="flex items-center gap-2">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Ministerio de Desarrollo Social - Corrientes</p>
-                    {!hideDatePicker && (
-                        <>
-                            <div className="w-1 h-1 rounded-full bg-slate-300" />
-                            <p className="text-[10px] font-black text-[#526928] uppercase tracking-[0.2em]">{selectedLabel}</p>
-                        </>
-                    )}
-                </div>
-            </div>
-
-            {!hideDatePicker && (
-                <div className="flex items-center gap-4 relative">
-                    <div
-                        onClick={() => setIsOpen(!isOpen)}
-                        className="flex items-center gap-3 bg-white px-5 py-3 rounded-2xl border border-slate-200 shadow-sm cursor-pointer hover:bg-slate-50 transition-all group"
-                    >
-                        <Calendar size={18} className="text-[#526928]" />
-                        <span className="text-xs font-black text-slate-600 uppercase tracking-widest">{selectedLabel}</span>
-                        <div className="w-px h-4 bg-slate-200 mx-2" />
-                        <ChevronDown className={clsx("text-slate-400 transition-transform", isOpen && "rotate-180")} size={16} />
+            <header className="flex justify-between items-center mb-10">
+                <div className="space-y-1">
+                    <h2 className="text-3xl font-black text-slate-900 tracking-tight">
+                        Tablero Ejecutivo Provincial
+                    </h2>
+                    <div className="flex items-center gap-2">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Ministerio de Desarrollo Social - Corrientes</p>
+                        {!hideDatePicker && (
+                            <>
+                                <div className="w-1 h-1 rounded-full bg-slate-300" />
+                                <p className="text-[10px] font-black text-[#526928] uppercase tracking-[0.2em]">{selectedLabel}</p>
+                            </>
+                        )}
                     </div>
+                </div>
 
-                    {isOpen && (
-                        <div className="absolute top-full right-0 mt-2 w-72 bg-white rounded-2xl shadow-2xl border border-slate-100 z-[100] overflow-hidden animate-in fade-in slide-in-from-top-2">
-                            {/* TABS */}
-                            <div className="flex border-b border-slate-100 bg-slate-50/50 p-1">
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); setActiveTab('mensual'); }}
-                                    className={clsx(
-                                        "flex-1 py-3 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all",
-                                        activeTab === 'mensual' ? "bg-white text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-600"
-                                    )}
-                                >
-                                    Mensual
-                                </button>
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); setActiveTab('anual'); }}
-                                    className={clsx(
-                                        "flex-1 py-3 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all",
-                                        activeTab === 'anual' ? "bg-white text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-600"
-                                    )}
-                                >
-                                    Anual
-                                </button>
+                <div className="flex items-center gap-3">
+                    {!hideDatePicker && (
+                        <div className="flex items-center gap-4 relative">
+                            <div
+                                onClick={() => setIsOpen(!isOpen)}
+                                className="flex items-center gap-3 bg-white px-5 py-3 rounded-2xl border border-slate-200 shadow-sm cursor-pointer hover:bg-slate-50 transition-all group"
+                            >
+                                <Calendar size={18} className="text-[#526928]" />
+                                <span className="text-xs font-black text-slate-600 uppercase tracking-widest">{selectedLabel}</span>
+                                <div className="w-px h-4 bg-slate-200 mx-2" />
+                                <ChevronDown className={clsx("text-slate-400 transition-transform", isOpen && "rotate-180")} size={16} />
                             </div>
 
-                            {/* LIST */}
-                            <div className="py-2 max-h-80 overflow-y-auto">
-                                {(activeTab === 'mensual' ? periods.mensual : periods.anual).map((p, i) => (
-                                    <div
-                                        key={i}
-                                        onClick={() => handleSelect(p)}
-                                        className="px-6 py-3 hover:bg-slate-50 flex justify-between items-center cursor-pointer group"
-                                    >
-                                        <span className={clsx(
-                                            "text-xs font-bold transition-colors",
-                                            selectedLabel === p.label ? "text-[#526928]" : "text-slate-500 group-hover:text-slate-800"
-                                        )}>
-                                            {p.label}
-                                        </span>
-                                        {selectedLabel === p.label && <Check size={14} className="text-[#526928]" />}
+                            {isOpen && (
+                                <div className="absolute top-full right-0 mt-2 w-72 bg-white rounded-2xl shadow-2xl border border-slate-100 z-[100] overflow-hidden animate-in fade-in slide-in-from-top-2">
+                                    {/* TABS */}
+                                    <div className="flex border-b border-slate-100 bg-slate-50/50 p-1">
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); setActiveTab('mensual'); }}
+                                            className={clsx(
+                                                "flex-1 py-3 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all",
+                                                activeTab === 'mensual' ? "bg-white text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-600"
+                                            )}
+                                        >
+                                            Mensual
+                                        </button>
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); setActiveTab('anual'); }}
+                                            className={clsx(
+                                                "flex-1 py-3 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all",
+                                                activeTab === 'anual' ? "bg-white text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-600"
+                                            )}
+                                        >
+                                            Anual
+                                        </button>
                                     </div>
-                                ))}
 
-                                <div className="p-2 border-t border-slate-50">
-                                    <div
-                                        onClick={() => handleSelect({ label: "Todo el Periodo", from: "2024-01-01", to: `${new Date().getFullYear()}-12-31` })}
-                                        className="px-4 py-3 rounded-xl hover:bg-slate-50 flex justify-between items-center cursor-pointer group text-center bg-slate-50/30"
-                                    >
-                                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 w-full group-hover:text-[#526928]">Ver Todo el Periodo</span>
+                                    {/* LIST */}
+                                    <div className="py-2 max-h-80 overflow-y-auto">
+                                        {(activeTab === 'mensual' ? periods.mensual : periods.anual).map((p, i) => (
+                                            <div
+                                                key={i}
+                                                onClick={() => handleSelect(p)}
+                                                className="px-6 py-3 hover:bg-slate-50 flex justify-between items-center cursor-pointer group"
+                                            >
+                                                <span className={clsx(
+                                                    "text-xs font-bold transition-colors",
+                                                    selectedLabel === p.label ? "text-[#526928]" : "text-slate-500 group-hover:text-slate-800"
+                                                )}>
+                                                    {p.label}
+                                                </span>
+                                                {selectedLabel === p.label && <Check size={14} className="text-[#526928]" />}
+                                            </div>
+                                        ))}
+
+                                        <div className="p-2 border-t border-slate-50">
+                                            <div
+                                                onClick={() => handleSelect({ label: "Todo el Periodo", from: "2024-01-01", to: `${new Date().getFullYear()}-12-31` })}
+                                                className="px-4 py-3 rounded-xl hover:bg-slate-50 flex justify-between items-center cursor-pointer group text-center bg-slate-50/30"
+                                            >
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 w-full group-hover:text-[#526928]">Ver Todo el Periodo</span>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
+                            )}
                         </div>
                     )}
+
+                    <button
+                        onClick={handleLogout}
+                        className="flex items-center gap-2 bg-white px-5 py-3 rounded-2xl border border-slate-200 shadow-sm cursor-pointer hover:bg-red-50 hover:text-red-600 hover:border-red-100 text-slate-500 font-black text-xs uppercase tracking-wider transition-all group"
+                    >
+                        <LogOut size={16} className="text-slate-400 group-hover:text-red-500 transition-colors" />
+                        <span className="hidden sm:inline">Salir</span>
+                    </button>
                 </div>
-            )}
-        </header>
-    );
+            </header>
+        );
 }
 
 export function Header(props: { hideDatePicker?: boolean }) {
