@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "IMI - Informe de Desarrollo Social",
+  title: "IMI - Informe Desarrollo Social",
   description: "Dashboard institucional de impacto social",
   icons: {
     icon: `${APP_BASE_PATH}/Logo_desarrollo_social.png`,
