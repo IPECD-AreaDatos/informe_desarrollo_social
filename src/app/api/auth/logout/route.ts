@@ -6,7 +6,7 @@ export async function POST() {
     // Clear session cookie
     response.cookies.set('session', '', {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        secure: false,
         sameSite: 'lax',
         path: '/',
         expires: new Date(0),
@@ -21,7 +21,7 @@ export async function GET() {
     // Clear session cookie
     response.cookies.set('session', '', {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        secure: false,
         sameSite: 'lax',
         path: '/',
         expires: new Date(0),

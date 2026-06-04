@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
         const response = NextResponse.json({ authenticated: false }, { status: 200 });
         response.cookies.set('session', '', {
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
+            secure: false,
             sameSite: 'lax',
             path: '/',
             expires: new Date(0),
