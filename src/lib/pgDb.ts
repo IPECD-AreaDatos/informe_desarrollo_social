@@ -8,11 +8,11 @@ let pool: Pool | null = null;
 export function getPgPool(): Pool {
     if (!pool) {
         pool = new Pool({
-            host: process.env.HOST_DBB1,
-            port: 5432,
-            user: process.env.USER_DBB1,
-            password: process.env.PASSWORD_DBB1,
-            database: (process.env.BASE_DESARROLLO_SOCIAL || '').trim(),
+            host: process.env.PG_HOST,
+            port: parseInt(process.env.PG_PORT || '5432'),
+            user: process.env.PG_USER,
+            password: process.env.PG_PASSWORD,
+            database: (process.env.PG_DATABASE || '').trim(),
             max: 10,
             idleTimeoutMillis: 30000,
             connectionTimeoutMillis: 5000,
