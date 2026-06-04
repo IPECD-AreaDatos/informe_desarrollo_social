@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-export function proxy(request: NextRequest) {
+export function middleware(request: NextRequest) {
     const session = request.cookies.get('session');
     const { pathname } = request.nextUrl;
     const hasSession = !!session?.value;
 
-    console.log(`[PROXY LOG] Pathname: "${pathname}", HasSession: ${hasSession}`);
+    console.log(`[MIDDLEWARE LOG] Pathname: "${pathname}", HasSession: ${hasSession}`);
 
     // Bypass public resources, static assets, and api/auth endpoints
     if (
