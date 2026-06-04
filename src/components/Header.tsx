@@ -5,6 +5,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { clsx } from "clsx";
 import { apiUrl } from "@/lib/apiBase";
+import { APP_BASE_PATH } from "@/lib/basePath";
 
 const getDynamicPeriods = () => {
     const now = new Date();
@@ -83,8 +84,7 @@ function HeaderContent({ hideDatePicker = false }: { hideDatePicker?: boolean })
     const handleLogout = async () => {
         try {
             await fetch(apiUrl('/api/auth/logout'), { method: 'POST' });
-            router.push('/login');
-            router.refresh();
+            window.location.href = `${APP_BASE_PATH}/login`;
         } catch (e) {
             console.error('Error logging out:', e);
         }

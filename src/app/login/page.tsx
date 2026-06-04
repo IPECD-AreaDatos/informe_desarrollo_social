@@ -40,8 +40,7 @@ export default function LoginPage() {
             }
 
             // Redirect to home page upon success
-            router.push('/');
-            router.refresh();
+            window.location.href = `${APP_BASE_PATH}/`;
         } catch (err: any) {
             setError(err.message || 'Ocurrió un error al intentar iniciar sesión');
         } finally {

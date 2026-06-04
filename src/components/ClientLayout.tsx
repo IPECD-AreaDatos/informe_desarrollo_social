@@ -4,6 +4,7 @@ import React, { useEffect, useRef, Suspense } from 'react';
 import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { Sidebar, SidebarProvider, MainContent } from '@/components/sidebar';
 import { apiUrl } from '@/lib/apiBase';
+import { APP_BASE_PATH } from '@/lib/basePath';
 
 interface ClientLayoutProps {
     children: React.ReactNode;
@@ -139,19 +140,19 @@ export function ClientLayout({ children }: ClientLayoutProps) {
                 if (res.ok) {
                     const data = await res.json();
                     if (!data.authenticated) {
-                        router.push('/login');
+                        window.location.href = `${APP_BASE_PATH}/login`;
                     }
                 } else {
-                    router.push('/login');
+                    window.location.href = `${APP_BASE_PATH}/login`;
                 }
             } catch (e) {
                 console.error('Error verifying auth on client:', e);
-                router.push('/login');
+                window.location.href = `${APP_BASE_PATH}/login`;
             }
         };
 
         checkAuth();
-    }, [isLoginPage, router]);
+    }, [isLoginPage]);
 
     if (isLoginPage) {
         return <div className="w-full min-h-screen bg-[#0B1329]">{children}</div>;
