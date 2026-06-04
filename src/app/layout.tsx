@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { ClientLayout } from "@/components/ClientLayout";
+import { APP_BASE_PATH } from "@/lib/basePath";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,8 +15,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "IPECD - Informe de Desarrollo Social",
+  title: "IMI - Informe de Desarrollo Social",
   description: "Dashboard institucional de impacto social",
+  icons: {
+    icon: `${APP_BASE_PATH}/Logo_desarrollo_social.png`,
+  },
 };
 
 export default function RootLayout({
