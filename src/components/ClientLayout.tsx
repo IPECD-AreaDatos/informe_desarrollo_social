@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, Suspense } from 'react';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname, useSearchParams, useRouter } from 'next/navigation';
 import { Sidebar, SidebarProvider, MainContent } from '@/components/sidebar';
 import { apiUrl } from '@/lib/apiBase';
 
@@ -124,9 +124,34 @@ function NavigationTracker() {
  */
 export function ClientLayout({ children }: ClientLayoutProps) {
     const pathname = usePathname();
+    const router = useRouter();
 
     // Check if the current route is the login route
     const isLoginPage = pathname === '/login' || pathname?.endsWith('/login');
+
+    // Client-side authentication check as a second layer of defense (e.g. if middleware is bypassed or not loaded)
+    useEffect(() => {
+        if (isLoginPage) return;
+
+        const checkAuth = async () => {
+            try {
+                const res = await fetch(apiUrl('/api/auth/me'));
+                if (res.ok) {
+                    const data = await res.json();
+                    if (!data.authenticated) {
+                        router.push('/login');
+                    }
+                } else {
+                    router.push('/login');
+                }
+            } catch (e) {
+                console.error('Error verifying auth on client:', e);
+                router.push('/login');
+            }
+        };
+
+        checkAuth();
+    }, [isLoginPage, router]);
 
     if (isLoginPage) {
         return <div className="w-full min-h-screen bg-[#0B1329]">{children}</div>;
