@@ -3,7 +3,9 @@ import { NextRequest, NextResponse } from 'next/server';
 export function middleware(request: NextRequest) {
     const session = request.cookies.get('session');
     const { pathname } = request.nextUrl;
-    const hasSession = !!session?.value;
+    // Basic format check: a valid encrypted session token (AES-256 base64) is always longer than 40 chars.
+    // This rejects dummy cookies immediately on the Edge Runtime.
+    const hasSession = !!session?.value && session.value.length > 40;
 
     console.log(`[MIDDLEWARE LOG] Pathname: "${pathname}", HasSession: ${hasSession}`);
 
