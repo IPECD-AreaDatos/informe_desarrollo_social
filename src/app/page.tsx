@@ -118,9 +118,25 @@ function SummaryDashboardContent() {
     );
   }
 
+  const hasNoData = !loading && data && (Number(data.total_expedientes) === 0 || Number(data.personas_atendidas_total) === 0);
+
   return (
     <div className="p-8 max-w-[1600px] mx-auto space-y-10 bg-[#F8FAFC]">
       <Header />
+
+      {hasNoData && (
+        <div className="bg-amber-500/10 border border-amber-500/20 text-amber-900 p-6 rounded-3xl flex items-center gap-4 animate-fade-in">
+          <div className="w-12 h-12 bg-amber-500/20 rounded-2xl flex items-center justify-center text-amber-600 shrink-0">
+            <AlertCircle size={24} />
+          </div>
+          <div className="space-y-1">
+            <p className="font-black text-sm uppercase tracking-wider text-amber-800">Aún no existen datos registrados para este período</p>
+            <p className="text-xs text-amber-700 font-bold">
+              Última carga en la base de datos: <span className="font-extrabold text-amber-900 underline">{data?.latest_data_date || 'Sin datos'}</span>.
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="space-y-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 hover:cursor-default">

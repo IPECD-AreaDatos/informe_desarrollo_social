@@ -39,11 +39,37 @@ function getPageName(path: string): string {
 function NavigationTracker() {
     const pathname = usePathname();
     const searchParams = useSearchParams();
+    const router = useRouter();
     const from = searchParams.get('from');
     const to = searchParams.get('to');
 
     const lastLoggedPath = useRef<string | null>(null);
     const lastLoggedPeriod = useRef<string | null>(null);
+
+    // Dynamically default to the latest data month if 'from' or 'to' is missing on dashboard pages
+    useEffect(() => {
+        if (!pathname) return;
+
+        if (pathname === '/' || pathname === '/territorial') {
+            if (!from || !to) {
+                const fetchLatestDate = async () => {
+                    try {
+                        const res = await fetch(apiUrl('/api/stats/latest-date'));
+                        const data = await res.json();
+                        if (data.success && data.from && data.to) {
+                            const params = new URLSearchParams(searchParams.toString());
+                            params.set('from', data.from);
+                            params.set('to', data.to);
+                            router.replace(`${pathname}?${params.toString()}`);
+                        }
+                    } catch (error) {
+                        console.error('Error fetching default date range:', error);
+                    }
+                };
+                fetchLatestDate();
+            }
+        }
+    }, [pathname, from, to, searchParams, router]);
 
     // Track page views
     useEffect(() => {

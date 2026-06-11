@@ -81,6 +81,18 @@ export async function GET(request: Request) {
             LIMIT 10
         `, [from, to, from, to, from, to, from, to]);
 
+        const [maxDateRow]: any = await connection.execute(
+            'SELECT MAX(fecha_inicio) as max_date FROM expediente_expediente WHERE activo = 1'
+        );
+        let latest_data_date = null;
+        if (maxDateRow && maxDateRow[0] && maxDateRow[0].max_date) {
+            const d = new Date(maxDateRow[0].max_date);
+            const day = String(d.getDate()).padStart(2, '0');
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const year = d.getFullYear();
+            latest_data_date = `${day}/${month}/${year}`;
+        }
+
         await close();
 
         return NextResponse.json({
@@ -89,7 +101,8 @@ export async function GET(request: Request) {
                 modulos,
                 pasajes: pasajesData[0].count,
                 recursos,
-                territory
+                territory,
+                latest_data_date
             }
         });
     } catch (error: any) {

@@ -26,6 +26,7 @@ export interface MinisterioStats {
     gasto_mensual: Array<{ month: string; amount: number }>;
     entregas: Array<{ name: string; value: number }>;
     estado_recursos: { solicitudes: number; asistencias: number };
+    latest_data_date: string | null;
 }
 
 
@@ -149,6 +150,18 @@ export async function getMinisterioStats(from: string, to: string): Promise<Mini
         const totalAtendidos = people[0].count;
         const conExpediente = peopleWithExp[0].count;
 
+        const [maxDateRow]: any = await connection.execute(
+            'SELECT MAX(fecha_inicio) as max_date FROM expediente_expediente WHERE activo = 1'
+        );
+        let latest_data_date = null;
+        if (maxDateRow && maxDateRow[0] && maxDateRow[0].max_date) {
+            const d = new Date(maxDateRow[0].max_date);
+            const day = String(d.getDate()).padStart(2, '0');
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const year = d.getFullYear();
+            latest_data_date = `${day}/${month}/${year}`;
+        }
+
         return {
             total_expedientes: totalExp[0].count,
             personas_con_expediente: conExpediente,
@@ -165,7 +178,8 @@ export async function getMinisterioStats(from: string, to: string): Promise<Mini
             logistica: { destinos, salidas, recorridos },
             gasto_mensual: gastoMensual,
             entregas: entregas,
-            estado_recursos: { solicitudes: Number(estadoRecursos[0]?.solicitudes || 0), asistencias: Number(estadoRecursos[0]?.asistencias || 0) }
+            estado_recursos: { solicitudes: Number(estadoRecursos[0]?.solicitudes || 0), asistencias: Number(estadoRecursos[0]?.asistencias || 0) },
+            latest_data_date
         };
     } finally {
         await close();

@@ -7,15 +7,14 @@ import { clsx } from "clsx";
 import { apiUrl } from "@/lib/apiBase";
 import { APP_BASE_PATH } from "@/lib/basePath";
 
-const getDynamicPeriods = () => {
-    const now = new Date();
+const getDynamicPeriods = (baseDate: Date = new Date()) => {
     const months: { label: string, from: string, to: string }[] = [];
     const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
     // Ultimos 6 meses
     for (let i = 0; i < 6; i++) {
-        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        const lastDay = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
+        const d = new Date(baseDate.getFullYear(), baseDate.getMonth() - i, 1);
+        const lastDay = new Date(baseDate.getFullYear(), baseDate.getMonth() - i + 1, 0);
         const label = `${monthNames[d.getMonth()]} ${d.getFullYear()}${i === 0 ? " (Actual)" : ""}`;
         months.push({
             label,
@@ -24,7 +23,7 @@ const getDynamicPeriods = () => {
         });
     }
 
-    const currentYear = now.getFullYear();
+    const currentYear = baseDate.getFullYear();
     const annual: { label: string, from: string, to: string }[] = [
         { label: `Año ${currentYear} (Actual)`, from: `${currentYear}-01-01`, to: `${currentYear}-12-31` },
         { label: `Año ${currentYear - 1} (Completo)`, from: `${currentYear - 1}-01-01`, to: `${currentYear - 1}-12-31` },
@@ -68,7 +67,7 @@ function HeaderContent({ hideDatePicker = false }: { hideDatePicker?: boolean })
                 setSelectedLabel(defaultPeriod.label);
             }
         }
-    }, [searchParams, defaultPeriod]);
+    }, [searchParams, defaultPeriod, periods]);
 
     const handleSelect = (period: { label: string, from: string, to: string }) => {
         setSelectedLabel(period.label);
