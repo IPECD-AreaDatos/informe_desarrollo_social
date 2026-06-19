@@ -90,7 +90,7 @@ function HeaderContent({ hideDatePicker = false }: { hideDatePicker?: boolean })
     };
 
     return (
-            <header className="flex justify-between items-center mb-10">
+            <header className="flex justify-between items-center mb-6">
                 <div className="space-y-1">
                     <h2 className="text-3xl font-black text-slate-900 tracking-tight">
                         Tablero Ejecutivo Provincial

@@ -321,11 +321,13 @@ function limpiarDepartamentoEtiqueta(s: string) {
     .trim();
 }
 
-/** Leyenda del gráfico «Tipo de dependencia»: el dato en BD puede seguir siendo «Sin clasificar». */
+/** Leyenda del gráfico «Tipo de dependencia» en mayúsculas sin la etiqueta ambigua «Comedores». */
 function etiquetaTipoDependencia(tipo: string): string {
-  const t = String(tipo ?? "").trim();
-  if (!t || /^sin\s+clasificar$/i.test(t)) return "Comedores";
-  return t;
+  const t = String(tipo ?? "").trim().toUpperCase();
+  if (!t || t === "SIN CLASIFICAR" || t === "SIN_CLASIFICAR" || t === "COMEDORES") {
+    return "SIN CLASIFICAR";
+  }
+  return t.replace(/_/g, " ");
 }
 
 /** Etiquetas de artículos de limpieza sin abreviaturas (coinciden con claves de BENEFICIO_LIMPIEZA / PRESUPUESTO_ITEM). */
@@ -417,7 +419,7 @@ function rubroPresupuestoEtiquetaLarga(rubro: string): string {
     case "becados":
       return "Becados";
     case "refrigerio_comida":
-      return "Refrigerio y comidas";
+      return "Alimentos frescos";
     case "carnes":
       return "Carnes";
     case "otros_recursos":
@@ -977,7 +979,7 @@ function ComedoresPageContent() {
   }, [detailId, periodo]);
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-[1600px] mx-auto space-y-6 lg:space-y-8 bg-[var(--background)] min-w-0">
+    <div className="p-6 max-w-[1600px] mx-auto space-y-6 bg-[#F8FAFC] min-w-0">
       <Header hideDatePicker />
 
       <div className="flex flex-col gap-2">
@@ -1080,7 +1082,7 @@ function ComedoresPageContent() {
         />
       </div>
 
-      <div className="min-w-0 rounded-2xl border border-slate-100 bg-white p-6 shadow-sm sm:rounded-[40px] sm:p-8 lg:p-10">
+      <div className="min-w-0 rounded-[28px] border border-slate-100 bg-white p-5 md:p-6 shadow-sm">
         <h3 className="mb-6 flex items-center gap-2 border-b border-slate-100 pb-4 text-lg font-black tracking-tight text-slate-800 sm:text-xl">
           <MapPin className="h-5 w-5 shrink-0 text-green-600 sm:h-6 sm:w-6" />
           Resumen territorial y tipo de dependencia.
@@ -1120,7 +1122,7 @@ function ComedoresPageContent() {
       </div>
 
       {/* Rankings */}
-      <div className="bg-white p-6 sm:p-8 lg:p-10 rounded-2xl sm:rounded-[40px] border border-slate-100 shadow-sm min-w-0">
+      <div className="bg-white p-5 md:p-6 rounded-[28px] border border-slate-100 shadow-sm min-w-0">
         <h3 className="text-lg sm:text-xl font-black text-slate-800 mb-4 sm:mb-6 border-b border-slate-100 pb-4">Ranking por gastos</h3>
         <div className="flex flex-wrap gap-2 mb-4 sm:mb-6">
           {RANKING_TABS.map((tab) => (
@@ -1553,10 +1555,12 @@ function ComedoresPageContent() {
                         <dt className="font-bold text-slate-600">Tipo de dependencia</dt>
                         <dd className="mt-0.5 break-words">
                           {(() => {
-                            const raw = detail.tipo_nombre?.trim();
+                            const raw = detail.tipo_nombre?.trim().toUpperCase();
                             const t =
-                              !raw || raw.toLowerCase() === "sin clasificar" ? "Comedores" : raw;
-                            const s = detail.subtipo_nombre?.trim();
+                              !raw || raw === "SIN CLASIFICAR" || raw === "SIN_CLASIFICAR" || raw === "COMEDORES"
+                                ? "SIN CLASIFICAR"
+                                : raw.replace(/_/g, " ");
+                            const s = detail.subtipo_nombre?.trim().toUpperCase();
                             if (s) return `${t} (${s})`;
                             return t;
                           })()}
@@ -1861,8 +1865,8 @@ function ComedoresPageContent() {
                         },
                         {
                           key: "refrigerio_comida",
-                          label: "Refrigerio y comidas (frutas y verduras)",
-                          tooltip: `Costo total de refrigerio y comidas presupuestado para esta dependencia en ${mesAnioActual}.`,
+                          label: "Alimentos frescos (frutas y verduras)",
+                          tooltip: `Costo total de alimentos frescos presupuestado para esta dependencia en ${mesAnioActual}.`,
                           value: comp.refrigerio_comida,
                         },
                         {

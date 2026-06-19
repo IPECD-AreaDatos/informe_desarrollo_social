@@ -5,25 +5,11 @@ import {
   Users,
   Coins,
   Package,
-  Ticket,
-  ChevronRight,
-  ArrowUpRight,
-  Building2,
-  Calendar,
-  Activity,
   MapPin,
-  ArrowRight,
   AlertCircle,
-  PieChart,
   BarChart3,
   TrendingUp,
-  Search,
-  HeartPulse,
-  BookOpen,
-  FileCheck,
-  ArrowRightLeft,
-  ChevronDown,
-  HelpCircle
+  BookOpen
 } from "lucide-react";
 import Link from "next/link";
 import { clsx } from "clsx";
@@ -68,49 +54,42 @@ function SummaryDashboardContent() {
     fetchData();
   }, [searchParams]);
 
+  // Colores exactos del sistema de diseño unificado del IPECD
   const ministerioKpis = [
     {
       label: "Expedientes Gestionados",
       value: data?.total_expedientes?.toLocaleString() || "0",
       icon: BookOpen,
       description: "Volumen total de registros administrativos y carátulas generadas en el periodo.",
-      color: "#526928"
+      color: "#719C29"
     },
     {
       label: "Atención con Expediente",
       value: data?.personas_con_expediente?.toLocaleString() || "0",
       icon: Users,
       description: "Cantidad de ciudadanos únicos que cuentan con respaldo de expediente administrativo.",
-      color: "#0284c7"
+      color: "#1F5D9B"
     },
     {
       label: "Atención sin Expediente",
       value: data?.personas_sin_expediente?.toLocaleString() || "0",
       icon: Users,
       description: "Ciudadanos asistidos mediante atención directa o emergencias territoriales (CDC).",
-      color: "#f59e0b"
+      color: "#FACD05"
     },
     {
       label: "Inversión Ejecutada",
       value: `$${Number(data?.inversion_total || 0).toLocaleString()}`,
       icon: Coins,
       description: "Monto total de subsidios y ayudas financieras liquidadas en el periodo.",
-      color: "#8b5cf6"
+      color: "#6B5CB7"
     },
   ];
-
-  // For reference in tooltips/context
-  const totalAtendidos = data?.personas_atendidas_total?.toLocaleString() || "0";
-
-
-
-
-
 
   if (error) {
     return (
       <div className="p-8 max-w-[1600px] mx-auto space-y-10">
-        <div className="bg-red-50 p-6 rounded-2xl border border-red-100 flex items-center gap-4 text-red-600">
+        <div className="bg-red-50 p-6 rounded-2xl border border-red-100 flex items-center gap-4 text-red-600 font-barlow">
           <AlertCircle size={24} />
           <p className="font-bold">Error al cargar datos: {error}</p>
         </div>
@@ -121,11 +100,11 @@ function SummaryDashboardContent() {
   const hasNoData = !loading && data && (Number(data.total_expedientes) === 0 || Number(data.personas_atendidas_total) === 0);
 
   return (
-    <div className="p-8 max-w-[1600px] mx-auto space-y-10 bg-[#F8FAFC]">
+    <div className="p-6 max-w-[1600px] mx-auto space-y-6 bg-[#F8FAFC]">
       <Header />
 
       {hasNoData && (
-        <div className="bg-amber-500/10 border border-amber-500/20 text-amber-900 p-6 rounded-3xl flex items-center gap-4 animate-fade-in">
+        <div className="bg-amber-500/10 border border-amber-500/20 text-amber-900 p-6 rounded-3xl flex items-center gap-4 animate-fade-in font-barlow">
           <div className="w-12 h-12 bg-amber-500/20 rounded-2xl flex items-center justify-center text-amber-600 shrink-0">
             <AlertCircle size={24} />
           </div>
@@ -138,8 +117,9 @@ function SummaryDashboardContent() {
         </div>
       )}
 
+      {/* Grilla flexible para evitar superposiciones en pantallas de notebooks */}
       <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 hover:cursor-default">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-4 gap-6 hover:cursor-default">
           {ministerioKpis.map((kpi, i) => (
             <KPICard
               key={i}
@@ -152,41 +132,37 @@ function SummaryDashboardContent() {
             />
           ))}
         </div>
-
       </div>
-
-
 
       {isAnnual && (
         <div className="bg-white p-10 rounded-[40px] border border-slate-100 shadow-sm space-y-12 group transition-all hover:shadow-xl">
           <div className="flex justify-between items-end border-b border-slate-50 pb-8">
             <div className="space-y-2">
-              <h3 className="text-3xl font-black tracking-tight text-slate-800 flex items-center gap-4">
+              <h3 className="text-3xl font-barlow-semicondensed font-extrabold tracking-tight text-[#2e2d2c] flex items-center gap-4">
                 <div className="w-12 h-12 bg-[#CADFAB] rounded-2xl flex items-center justify-center text-[#526928]">
                   <BarChart3 size={28} />
                 </div>
                 Evolución de Inversión Anual
               </h3>
-              <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest pl-16">Histórico de inversión asociados a expedientes.</p>
+              <p className="text-[#989797] font-barlow font-bold uppercase text-[10px] tracking-widest pl-16">Histórico de inversión asociados a expedientes.</p>
             </div>
           </div>
 
           <div className="relative h-[400px] mt-10">
-             {/* Chart implementation simplified for brevity but functional */}
              <div className="flex items-end justify-around gap-4 h-full pt-10 px-4">
                 {data?.gasto_mensual?.map((item: any, i: number) => {
                   const maxVal = Math.max(...data.gasto_mensual.map((g: any) => g.amount), 1);
                   const height = (item.amount / maxVal) * 100;
                   return (
                     <div key={i} className="flex-1 flex flex-col items-center gap-2 h-full justify-end group/item relative">
-                       <div className="opacity-0 group-hover/item:opacity-100 absolute -top-10 bg-slate-800 text-white px-2 py-1 rounded text-[10px]">
+                       <div className="opacity-0 group-hover/item:opacity-100 absolute -top-10 bg-slate-800 text-white px-2 py-1 rounded text-[10px] font-barlow">
                         ${item.amount.toLocaleString()}
                        </div>
                        <div 
                          className="w-full max-w-[40px] bg-gradient-to-t from-[#526928] to-[#96C156] rounded-t-xl transition-all"
                          style={{ height: `${height}%` }}
                        />
-                       <span className="text-[10px] font-bold text-slate-500">{item.month}</span>
+                       <span className="text-[10px] font-barlow font-bold text-[#989797]">{item.month}</span>
                     </div>
                   );
                 })}
@@ -195,24 +171,10 @@ function SummaryDashboardContent() {
         </div>
       )}
 
-      <div className="grid gap-8 grid-cols-1 lg:grid-cols-2">
-        <div className="relative group/log">
-          <div className="absolute right-8 top-10 z-20 flex bg-slate-50 p-1 rounded-xl border border-slate-100 shadow-inner">
-            {(["destinos", "salidas", "recorridos"] as const).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setLogisticsTab(tab)}
-                className={clsx(
-                  "px-3 py-1.5 text-[9px] font-black uppercase tracking-tighter rounded-lg transition-all",
-                  logisticsTab === tab
-                    ? "bg-white text-slate-800 shadow-sm border border-slate-100"
-                    : "text-slate-400 hover:text-slate-600"
-                )}
-              >
-                {tab}
-              </button>
-            ))}
-          </div>
+      {/* Sección Inferior de Reportes Gráficos */}
+      <div className="grid gap-8 grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
+        {/* Tarjeta de Logística de Pasajes */}
+        <div>
           <CategoryCard
             title="Logística de Pasajes"
             subtitle={`${logisticsTab === 'recorridos' ? 'Mapas de calor de' : 'Principales'} ${logisticsTab}`}
@@ -220,40 +182,69 @@ function SummaryDashboardContent() {
             items={data?.logistica?.[logisticsTab] || []}
             description={`Resumen de pasajes emitidos agrupados por ${logisticsTab}.`}
             loading={loading}
+            headerActions={
+              <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200/60 shadow-xs w-full">
+                {(["destinos", "salidas", "recorridos"] as const).map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setLogisticsTab(tab)}
+                    className={clsx(
+                      "flex-1 py-1.5 text-[9px] font-barlow font-extrabold uppercase tracking-wider rounded-md transition-all cursor-pointer text-center",
+                      logisticsTab === tab
+                        ? "bg-white text-[#2e2d2c] shadow-xs border border-slate-200/30"
+                        : "text-slate-500 hover:text-slate-700"
+                    )}
+                  >
+                    {tab}
+                  </button>
+                ))}
+              </div>
+            }
           />
         </div>
 
-        <CategoryCard
-          title="Recursos"
-          subtitle="Ranking de ayudas y recursos"
-          icon={Package}
-          items={data?.entregas || []}
-          description="Ranking de los recursos más solicitados."
-          loading={loading}
-        />
+        {/* Tarjeta de Recursos */}
+        <div>
+          <CategoryCard
+            title="Recursos"
+            subtitle="Ranking de ayudas y recursos"
+            icon={Package}
+            items={data?.entregas || []}
+            description="Ranking de los recursos más solicitados."
+            loading={loading}
+          />
+        </div>
 
-        <DemographicStackedChart
-          title="Sexo por Edad"
-          subtitle="Distribución por Rango Etario"
-          icon={BarChart3}
-          data={data?.demografia?.piramide || []}
-          loading={loading}
-        />
+        {/* Sexo por Edad */}
+        <div className="lg:col-span-2 xl:col-span-1">
+          <DemographicStackedChart
+            title="Sexo por Edad"
+            subtitle="Distribución por Rango Etario"
+            icon={BarChart3}
+            data={data?.demografia?.piramide || []}
+            loading={loading}
+          />
+        </div>
       </div>
 
-      <div className="space-y-8 pt-10 border-t border-slate-200">
+      {/* Enlaces de Acceso Rápido */}
+      <div className="space-y-6 pt-6 border-t border-slate-200">
         <div className="space-y-2">
-          <h3 className="text-2xl font-black text-slate-800 tracking-tight">Acceso Rápido</h3>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Otras secciones de interés</p>
+          <h3 className="text-2xl font-barlow-semicondensed font-extrabold text-[#2e2d2c] tracking-tight">Acceso Rápido</h3>
+          <p className="text-[10px] font-barlow font-bold text-[#989797] uppercase tracking-widest">Otras secciones de interés</p>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Link href="/vulnerabilidad" className="bg-white p-6 rounded-3xl border border-slate-100 flex items-center gap-4 hover:shadow-md transition-all">
-            <div className="w-10 h-10 bg-slate-800 rounded-xl flex items-center justify-center text-white"><Users size={20}/></div>
-            <span className="font-bold text-slate-800 text-sm">Vulnerabilidad</span>
+          <Link href="/vulnerabilidad" className="bg-white p-6 rounded-3xl border border-slate-100 flex items-center gap-4 hover:shadow-md transition-all font-barlow font-bold text-[#2e2d2c] text-sm">
+            <div className="w-10 h-10 bg-slate-800 rounded-xl flex items-center justify-center text-white">
+              <Users size={20} />
+            </div>
+            <span>Vulnerabilidad</span>
           </Link>
-          <Link href="/territorial" className="bg-white p-6 rounded-3xl border border-slate-100 flex items-center gap-4 hover:shadow-md transition-all">
-            <div className="w-10 h-10 bg-purple-500 rounded-xl flex items-center justify-center text-white"><MapPin size={20}/></div>
-            <span className="font-bold text-slate-800 text-sm">Territorial</span>
+          <Link href="/territorial" className="bg-white p-6 rounded-3xl border border-slate-100 flex items-center gap-4 hover:shadow-md transition-all font-barlow font-bold text-[#2e2d2c] text-sm">
+            <div className="w-10 h-10 bg-purple-500 rounded-xl flex items-center justify-center text-white">
+              <MapPin size={20} />
+            </div>
+            <span>Territorial</span>
           </Link>
         </div>
       </div>
@@ -263,7 +254,7 @@ function SummaryDashboardContent() {
 
 export default function SummaryDashboard() {
   return (
-    <Suspense fallback={<div className="p-8 max-w-[1600px] mx-auto space-y-10 bg-[#F8FAFC]">Cargando Dashboard...</div>}>
+    <Suspense fallback={<div className="p-8 max-w-[1600px] mx-auto space-y-10 bg-[#F8FAFC] font-barlow font-bold text-slate-500">Cargando Dashboard...</div>}>
       <SummaryDashboardContent />
     </Suspense>
   );
