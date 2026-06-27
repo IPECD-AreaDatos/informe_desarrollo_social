@@ -137,86 +137,135 @@ function SummaryDashboardContent() {
       {isAnnual && (
         <div className="bg-white p-10 rounded-[40px] border border-slate-100 shadow-sm space-y-12 group transition-all hover:shadow-xl">
           <div className="flex justify-between items-end border-b border-slate-50 pb-8">
-            <div className="space-y-2">
-              <h3 className="text-3xl font-barlow-semicondensed font-extrabold tracking-tight text-[#2e2d2c] flex items-center gap-4">
-                <div className="w-12 h-12 bg-[#CADFAB] rounded-2xl flex items-center justify-center text-[#526928]">
-                  <BarChart3 size={28} />
+            <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-[#719C29]/10 rounded-2xl flex items-center justify-center text-[#719C29] shrink-0">
+                    <BarChart3 size={24} />
                 </div>
-                Evolución de Inversión Anual
-              </h3>
-              <p className="text-[#989797] font-barlow font-bold uppercase text-[10px] tracking-widest pl-16">Histórico de inversión asociados a expedientes.</p>
+                <div>
+                    <h3 className="font-barlow-semicondensed font-extrabold text-2xl text-[#2e2d2c] tracking-tight">Evolución de Inversión Anual</h3>
+                    <p className="text-[10px] font-barlow font-bold text-[#989797] uppercase tracking-widest mt-0.5">Histórico de inversión asociados a expedientes.</p>
+                </div>
             </div>
           </div>
 
-          <div className="relative h-[400px] mt-10">
-             <div className="flex items-end justify-around gap-4 h-full pt-10 px-4">
-                {data?.gasto_mensual?.map((item: any, i: number) => {
-                  const maxVal = Math.max(...data.gasto_mensual.map((g: any) => g.amount), 1);
-                  const height = (item.amount / maxVal) * 100;
-                  return (
-                    <div key={i} className="flex-1 flex flex-col items-center gap-2 h-full justify-end group/item relative">
-                       <div className="opacity-0 group-hover/item:opacity-100 absolute -top-10 bg-slate-800 text-white px-2 py-1 rounded text-[10px] font-barlow">
-                        ${item.amount.toLocaleString()}
-                       </div>
-                       <div 
-                         className="w-full max-w-[40px] bg-gradient-to-t from-[#526928] to-[#96C156] rounded-t-xl transition-all"
-                         style={{ height: `${height}%` }}
-                       />
-                       <span className="text-[10px] font-barlow font-bold text-[#989797]">{item.month}</span>
+          {/* Contenedor Principal con padding extra abajo para el nombre del eje X */}
+          <div className="relative h-[380px] mt-10 flex flex-col gap-2">
+            {(() => {
+              const gastoMensual = data?.gasto_mensual || [];
+              if (gastoMensual.length === 0) {
+                return <p className="w-full text-center text-slate-400">No hay datos de inversión para el año seleccionado.</p>;
+              }
+              const maxVal = Math.max(...gastoMensual.map((g: any) => g.amount), 1);
+              const formatCompact = (n: number) => {
+                if (n >= 1e6) return `$${(n / 1e6).toFixed(1)}M`;
+                if (n >= 1e3) return `$${(n / 1e3).toFixed(0)}k`;
+                return `$${n}`;
+              };
+
+              return (
+                <>
+                  {/* Área del Gráfico + Eje Y */}
+                  <div className="flex-1 flex gap-4 h-[340px]">
+                    
+                    {/* EJE Y: Nombre Rotado + Valores */}
+                    <div className="flex items-center gap-2 h-full pr-1 border-r border-slate-100">
+                      {/* Nombre del Eje Y */}
+                      <span className="text-[10px] font-barlow font-bold text-[#989797] uppercase tracking-widest -rotate-90 origin-center whitespace-nowrap -mx-4">
+                        Inversión
+                      </span>
+                      
+                      {/* Valores numéricos */}
+                      <div className="h-full flex flex-col justify-between text-right text-[10px] font-bold text-slate-400 min-w-[45px]">
+                        <span>{formatCompact(maxVal)}</span>
+                        <span>{formatCompact(maxVal / 2)}</span>
+                        <span>$0</span>
+                      </div>
                     </div>
-                  );
-                })}
-             </div>
+
+                    {/* Gráfico de Barras */}
+                    <div className="flex-1 grid grid-cols-12 gap-2 relative">
+                      {/* Líneas de guía */}
+                      <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
+                        <div className="h-1/2 border-b border-dashed border-slate-200/80"></div>
+                        <div className="h-1/2 border-b border-dashed border-slate-200/80"></div>
+                      </div>
+
+                      {gastoMensual.map((item: any, i: number) => {
+                        const height = (item.amount / maxVal) * 100;
+                        return (
+                          <div key={i} className="flex flex-col items-center justify-end gap-2 group/item relative">
+                            <div 
+                              className="w-full max-w-[40px] bg-gradient-to-t from-[#719C29] to-[#A3D460] rounded-t-lg transition-all duration-500 hover:opacity-100 opacity-80"
+                              style={{ height: `${height}%` }}
+                              title={`${item.month}: $${item.amount.toLocaleString()}`}
+                            />
+                            <span className="text-[10px] font-barlow font-bold text-[#989797]">{item.month}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* EJE X: Contenedor inferior para la etiqueta del período */}
+                  <div className="flex justify-center w-full pl-[70px] mt-1">
+                    <span className="text-[10px] font-barlow font-bold text-[#989797] uppercase tracking-widest">
+                      Período
+                    </span>
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </div>
       )}
 
       {/* Sección Inferior de Reportes Gráficos */}
-      <div className="grid gap-8 grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
-        {/* Tarjeta de Logística de Pasajes */}
-        <div>
-          <CategoryCard
-            title="Logística de Pasajes"
-            subtitle={`${logisticsTab === 'recorridos' ? 'Mapas de calor de' : 'Principales'} ${logisticsTab}`}
-            icon={TrendingUp}
-            items={data?.logistica?.[logisticsTab] || []}
-            description={`Resumen de pasajes emitidos agrupados por ${logisticsTab}.`}
-            loading={loading}
-            headerActions={
-              <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200/60 shadow-xs w-full">
-                {(["destinos", "salidas", "recorridos"] as const).map((tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => setLogisticsTab(tab)}
-                    className={clsx(
-                      "flex-1 py-1.5 text-[9px] font-barlow font-extrabold uppercase tracking-wider rounded-md transition-all cursor-pointer text-center",
-                      logisticsTab === tab
-                        ? "bg-white text-[#2e2d2c] shadow-xs border border-slate-200/30"
-                        : "text-slate-500 hover:text-slate-700"
-                    )}
-                  >
-                    {tab}
-                  </button>
-                ))}
-              </div>
-            }
-          />
-        </div>
-
+      <div className="space-y-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
+          {/* Tarjeta de Logística de Pasajes */}
+          <div>
+            <CategoryCard
+              title="Logística de Pasajes"
+              subtitle={`${logisticsTab === 'recorridos' ? 'Mapas de calor de' : 'Principales'} ${logisticsTab}`}
+              icon={TrendingUp}
+              items={data?.logistica?.[logisticsTab] || []}
+              description={`Resumen de pasajes emitidos agrupados por ${logisticsTab}.`}
+              loading={loading}
+              headerActions={
+                <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200/60 shadow-xs w-full">
+                  {(["destinos", "salidas", "recorridos"] as const).map((tab) => (
+                    <button
+                      key={tab}
+                      onClick={() => setLogisticsTab(tab)}
+                      className={clsx(
+                        "flex-1 py-1.5 text-[9px] font-barlow font-extrabold uppercase tracking-wider rounded-md transition-all cursor-pointer text-center",
+                        logisticsTab === tab
+                          ? "bg-white text-[#2e2d2c] shadow-xs border border-slate-200/30"
+                          : "text-slate-500 hover:text-slate-700"
+                      )}
+                    >
+                      {tab}
+                    </button>
+                  ))}
+                </div>
+              }
+            />
+          </div>
+          
         {/* Tarjeta de Recursos */}
-        <div>
-          <CategoryCard
-            title="Recursos"
-            subtitle="Ranking de ayudas y recursos"
-            icon={Package}
-            items={data?.entregas || []}
-            description="Ranking de los recursos más solicitados."
-            loading={loading}
-          />
+          <div>
+            <CategoryCard
+              title="Recursos"
+              subtitle="Ranking de ayudas y recursos"
+              icon={Package}
+              items={data?.entregas || []}
+              description="Ranking de los recursos más solicitados."
+              loading={loading}
+            />
+          </div>
         </div>
-
         {/* Sexo por Edad */}
-        <div className="lg:col-span-2 xl:col-span-1">
+        <div>
           <DemographicStackedChart
             title="Sexo por Edad"
             subtitle="Distribución por Rango Etario"

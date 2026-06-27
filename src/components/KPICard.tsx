@@ -65,16 +65,16 @@ export function KPICard({
             </div>
 
             <div className="space-y-1 mt-4 relative z-10 flex-1 flex flex-col justify-end">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{label}</p>
+                <p className="text-[10px] font-barlow font-bold text-slate-400 uppercase tracking-wider">{label}</p>
                 {loading ? (
                     <div className="h-8 w-3/4 bg-slate-100 animate-pulse rounded-lg mt-2" />
                 ) : (
                     <div className="flex flex-col">
-                        <h3 className="text-xl sm:text-2xl lg:text-xl xl:text-2xl 2xl:text-3xl font-extrabold text-slate-800 tracking-tight mt-1" title={String(value)}>
+                        <h3 className="text-xl sm:text-2xl lg:text-xl xl:text-2xl 2xl:text-3xl font-barlow-semicondensed font-extrabold text-slate-800 tracking-tight mt-1" title={String(value)}>
                             {value}
                         </h3>
                         {secondaryValue && (
-                            <p className="text-[10px] font-bold text-slate-400 mt-1 flex items-center gap-1.5 uppercase tracking-wide">
+                            <p className="text-[10px] font-barlow font-bold text-slate-400 mt-1 flex items-center gap-1.5 uppercase tracking-wide">
                                 <span className="w-1 h-1 rounded-full bg-slate-300" />
                                 {secondaryLabel || 'de'} <span className="text-slate-600 font-extrabold whitespace-pre-line leading-snug">{secondaryValue}</span>
                             </p>

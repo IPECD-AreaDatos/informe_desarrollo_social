@@ -92,15 +92,15 @@ function HeaderContent({ hideDatePicker = false }: { hideDatePicker?: boolean })
     return (
             <header className="flex justify-between items-center mb-6">
                 <div className="space-y-1">
-                    <h2 className="text-3xl font-black text-slate-900 tracking-tight">
+                    <h2 className="text-3xl font-barlow-semicondensed font-extrabold text-[#2e2d2c] tracking-tight">
                         Tablero Ejecutivo Provincial
                     </h2>
                     <div className="flex items-center gap-2">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Ministerio de Desarrollo Social - Corrientes</p>
+                        <p className="text-[10px] font-barlow font-bold text-[#989797] uppercase tracking-[0.2em]">Ministerio de Desarrollo Social - Corrientes</p>
                         {!hideDatePicker && (
                             <>
                                 <div className="w-1 h-1 rounded-full bg-slate-300" />
-                                <p className="text-[10px] font-black text-[#526928] uppercase tracking-[0.2em]">{selectedLabel}</p>
+                                <p className="text-[10px] font-barlow font-bold text-[#526928] uppercase tracking-[0.2em]">{selectedLabel}</p>
                             </>
                         )}
                     </div>
@@ -114,7 +114,7 @@ function HeaderContent({ hideDatePicker = false }: { hideDatePicker?: boolean })
                                 className="flex items-center gap-3 bg-white px-5 py-3 rounded-2xl border border-slate-200 shadow-sm cursor-pointer hover:bg-slate-50 transition-all group"
                             >
                                 <Calendar size={18} className="text-[#526928]" />
-                                <span className="text-xs font-black text-slate-600 uppercase tracking-widest">{selectedLabel}</span>
+                                <span className="text-xs font-barlow-semibold text-slate-600 uppercase tracking-widest">{selectedLabel}</span>
                                 <div className="w-px h-4 bg-slate-200 mx-2" />
                                 <ChevronDown className={clsx("text-slate-400 transition-transform", isOpen && "rotate-180")} size={16} />
                             </div>
@@ -126,7 +126,7 @@ function HeaderContent({ hideDatePicker = false }: { hideDatePicker?: boolean })
                                         <button
                                             onClick={(e) => { e.stopPropagation(); setActiveTab('mensual'); }}
                                             className={clsx(
-                                                "flex-1 py-3 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all",
+                                                "flex-1 py-3 text-[10px] font-barlow-semibold uppercase tracking-wider rounded-xl transition-all",
                                                 activeTab === 'mensual' ? "bg-white text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-600"
                                             )}
                                         >
@@ -135,7 +135,7 @@ function HeaderContent({ hideDatePicker = false }: { hideDatePicker?: boolean })
                                         <button
                                             onClick={(e) => { e.stopPropagation(); setActiveTab('anual'); }}
                                             className={clsx(
-                                                "flex-1 py-3 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all",
+                                                "flex-1 py-3 text-[10px] font-barlow-semibold uppercase tracking-wider rounded-xl transition-all",
                                                 activeTab === 'anual' ? "bg-white text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-600"
                                             )}
                                         >
@@ -151,8 +151,7 @@ function HeaderContent({ hideDatePicker = false }: { hideDatePicker?: boolean })
                                                 onClick={() => handleSelect(p)}
                                                 className="px-6 py-3 hover:bg-slate-50 flex justify-between items-center cursor-pointer group"
                                             >
-                                                <span className={clsx(
-                                                    "text-xs font-bold transition-colors",
+                                                <span className={clsx( "text-xs font-barlow-semibold transition-colors",
                                                     selectedLabel === p.label ? "text-[#526928]" : "text-slate-500 group-hover:text-slate-800"
                                                 )}>
                                                     {p.label}
@@ -166,7 +165,7 @@ function HeaderContent({ hideDatePicker = false }: { hideDatePicker?: boolean })
                                                 onClick={() => handleSelect({ label: "Todo el Periodo", from: "2024-01-01", to: `${new Date().getFullYear()}-12-31` })}
                                                 className="px-4 py-3 rounded-xl hover:bg-slate-50 flex justify-between items-center cursor-pointer group text-center bg-slate-50/30"
                                             >
-                                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 w-full group-hover:text-[#526928]">Ver Todo el Periodo</span>
+                                                <span className="text-[10px] font-barlow-semibold uppercase tracking-widest text-slate-400 w-full group-hover:text-[#526928]">Ver Todo el Periodo</span>
                                             </div>
                                         </div>
                                     </div>
@@ -177,7 +176,7 @@ function HeaderContent({ hideDatePicker = false }: { hideDatePicker?: boolean })
 
                     <button
                         onClick={handleLogout}
-                        className="flex items-center gap-2 bg-white px-5 py-3 rounded-2xl border border-slate-200 shadow-sm cursor-pointer hover:bg-red-50 hover:text-red-600 hover:border-red-100 text-slate-500 font-black text-xs uppercase tracking-wider transition-all group"
+                        className="flex items-center gap-2 bg-white px-5 py-3 rounded-2xl border border-slate-200 shadow-sm cursor-pointer hover:bg-red-50 hover:text-red-600 hover:border-red-100 text-slate-500 font-barlow-semibold text-xs uppercase tracking-wider transition-all group"
                     >
                         <LogOut size={16} className="text-slate-400 group-hover:text-red-500 transition-colors" />
                         <span className="hidden sm:inline">Salir</span>
@@ -194,4 +193,3 @@ export function Header(props: { hideDatePicker?: boolean }) {
         </Suspense>
     );
 }
-
