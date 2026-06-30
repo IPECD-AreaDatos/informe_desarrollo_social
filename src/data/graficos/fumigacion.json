@@ -1,0 +1,47 @@
+{
+  "id": "fumigacion",
+  "titulo": "Evolución precios fumigación",
+  "charts": [
+    {
+      "id": "fumigacion-1",
+      "titulo": "Evolución de gasto en fumigación",
+      "series": [
+        {
+          "name": "Evolución de gasto en fumigación",
+          "dataKey": "s0"
+        }
+      ],
+      "data": [
+        {
+          "x": "Enero",
+          "s0": 1059500
+        },
+        {
+          "x": "Febrero",
+          "s0": 1059500
+        },
+        {
+          "x": "Marzo",
+          "s0": 1059500
+        },
+        {
+          "x": "Abril",
+          "s0": 1059500
+        },
+        {
+          "x": "Mayo",
+          "s0": 1059500
+        },
+        {
+          "x": "Junio",
+          "s0": 1059500
+        },
+        {
+          "x": "Julio",
+          "s0": 1059500
+        }
+      ],
+      "formatY": "ars"
+    }
+  ]
+}

@@ -23,6 +23,7 @@ import {
   Info,
 } from "lucide-react";
 import { apiUrl } from "@/lib/apiBase";
+import { PERIODO_DEFAULT, PERIODOS_UI_HASTA_JUNIO_2026 } from "@/lib/periodosDemo";
 import { ETIQUETA_EQUIVALENTE_MENSUAL_FRESCOS_CARNES } from "@/lib/presupuestoCantidadesSemanalMensual";
 import { Header } from "@/components/Header";
 import { KPICard } from "@/components/KPICard";
@@ -321,13 +322,24 @@ function limpiarDepartamentoEtiqueta(s: string) {
     .trim();
 }
 
-/** Leyenda del gráfico «Tipo de dependencia» en mayúsculas sin la etiqueta ambigua «Comedores». */
+/** Leyenda del gráfico «Tipo de dependencia» en Title Case (sin subtipos ni «Comedores» genérico). */
 function etiquetaTipoDependencia(tipo: string): string {
-  const t = String(tipo ?? "").trim().toUpperCase();
-  if (!t || t === "SIN CLASIFICAR" || t === "SIN_CLASIFICAR" || t === "COMEDORES") {
-    return "SIN CLASIFICAR";
-  }
-  return t.replace(/_/g, " ");
+  const raw = String(tipo ?? "").trim();
+  if (!raw || /^(sin clasificar|sin_clasificar|comedores)$/i.test(raw)) return "Sin clasificar";
+  const map: Record<string, string> = {
+    oficial: "Comedor Oficial",
+    solidario: "Comedor Solidario",
+    institucional: "Comedor Institucional",
+    "grupos voluntarios": "Grupos Voluntarios",
+    "grupo voluntario": "Grupos Voluntarios",
+  };
+  const key = raw.toLowerCase().replace(/_/g, " ");
+  if (map[key]) return map[key];
+  if (/^comedor oficial/i.test(raw)) return "Comedor Oficial";
+  if (/^comedor solidario/i.test(raw)) return "Comedor Solidario";
+  if (/^comedor institucional/i.test(raw)) return "Comedor Institucional";
+  if (/^grupo(s)? voluntario(s)?/i.test(raw)) return "Grupos Voluntarios";
+  return raw.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 /** Etiquetas de artículos de limpieza sin abreviaturas (coinciden con claves de BENEFICIO_LIMPIEZA / PRESUPUESTO_ITEM). */
@@ -589,8 +601,10 @@ function VerticalTerritorialBars({
 }
 
 function ComedoresPageContent() {
-  const [periodos, setPeriodos] = useState<{ valor: string; etiqueta: string }[]>([]);
-  const [periodo, setPeriodo] = useState("");
+  const [periodos, setPeriodos] = useState<{ valor: string; etiqueta: string }[]>([
+    ...PERIODOS_UI_HASTA_JUNIO_2026,
+  ]);
+  const [periodo, setPeriodo] = useState<string>(PERIODO_DEFAULT);
   const [summary, setSummary] = useState<SummaryData | null>(null);
   const [rankings, setRankings] = useState<RankingRow[]>([]);
   const [rankingTipo, setRankingTipo] = useState<GastosRankingTipo>("raciones_consolidado");
@@ -612,21 +626,35 @@ function ComedoresPageContent() {
       .then((j) => {
         if (j.success && j.data?.length) {
           setPeriodos(j.data);
-          setPeriodo(j.data[0]?.valor ?? "");
+          setPeriodo((prev) =>
+            j.data.some((p: { valor: string }) => p.valor === prev)
+              ? prev
+              : (j.data.find((p: { valor: string }) => p.valor === PERIODO_DEFAULT)?.valor ??
+                  j.data[j.data.length - 1]?.valor ??
+                  PERIODO_DEFAULT)
+          );
         }
       })
-      .catch(() => setPeriodos([{ valor: "", etiqueta: "Todos" }]));
+      .catch(() =>
+        setPeriodos([{ valor: PERIODO_DEFAULT, etiqueta: "Junio 2026" }])
+      );
   }, []);
 
   useEffect(() => {
-    if (periodo === undefined) return;
+    if (!periodo) return;
+    let cancelled = false;
     setLoadingSummary(true);
     fetch(apiUrl(`/api/comedores/summary?periodo=${encodeURIComponent(periodo)}`))
       .then((r) => r.json())
       .then((j) => {
-        if (j.success) setSummary(j.data);
+        if (!cancelled && j.success) setSummary(j.data);
       })
-      .finally(() => setLoadingSummary(false));
+      .finally(() => {
+        if (!cancelled) setLoadingSummary(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [periodo]);
 
   useEffect(() => {
@@ -637,6 +665,8 @@ function ComedoresPageContent() {
   }, [rankingTipo]);
 
   useEffect(() => {
+    if (!periodo) return;
+    let cancelled = false;
     setLoadingRankings(true);
     const ambitoParam =
       rankingTipo === "becarios" || rankingAmbito === "TODOS" ? "" : `&ambito=${rankingAmbito}`;
@@ -647,9 +677,14 @@ function ComedoresPageContent() {
     )
       .then((r) => r.json())
       .then((j) => {
-        if (j.success) setRankings(j.data ?? []);
+        if (!cancelled && j.success) setRankings(j.data ?? []);
       })
-      .finally(() => setLoadingRankings(false));
+      .finally(() => {
+        if (!cancelled) setLoadingRankings(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [periodo, rankingTipo, rankingAmbito]);
 
   useEffect(() => {
@@ -924,17 +959,15 @@ function ComedoresPageContent() {
   const capitalTipoBarras = useMemo((): TerritorialBarDatum[] => {
     const rows = summary?.comedores_por_tipo_capital;
     if (!rows?.length) return [];
-    const total =
-      capitalTotalDeps > 0 ? capitalTotalDeps : rows.reduce((a, r) => a + r.cantidad, 0) || 1;
+    const total = rows.reduce((a, r) => a + r.cantidad, 0) || 1;
     return rows.map((r, i) => {
-      const tipo = etiquetaTipoDependencia(r.tipo);
-      const label = r.subtipo ? `${tipo} — ${r.subtipo}` : tipo;
+      const label = etiquetaTipoDependencia(r.tipo);
       const cantidad = r.cantidad;
       const pct = (cantidad / total) * 100;
       const etiquetaEje = label.length > 18 ? `${label.slice(0, 16)}…` : label;
       return { key: `cap-tipo-${i}-${label}`, label, etiquetaEje, cantidad, pct };
     });
-  }, [summary?.comedores_por_tipo_capital, capitalTotalDeps]);
+  }, [summary?.comedores_por_tipo_capital]);
 
   const interiorDepartamentoBarras = useMemo((): TerritorialBarDatum[] => {
     const rows = summary?.comedores_por_departamento_interior;
@@ -964,19 +997,30 @@ function ComedoresPageContent() {
   useEffect(() => {
     if (detailId == null) {
       setDetail(null);
+      setLoadingDetail(false);
       return;
     }
+    let cancelled = false;
+    setDetail(null);
     setLoadingDetail(true);
     fetch(
       apiUrl(`/api/comedores/${encodeURIComponent(detailId)}?periodo=${encodeURIComponent(periodo)}`)
     )
       .then((r) => r.json())
       .then((j) => {
+        if (cancelled) return;
         if (j.success) setDetail(j.data);
         else setDetail(null);
       })
-      .finally(() => setLoadingDetail(false));
+      .finally(() => {
+        if (!cancelled) setLoadingDetail(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [detailId, periodo]);
+
+  const detailReady = detail != null && detail.comedor_id === detailId;
 
   return (
     <div className="p-6 max-w-[1600px] mx-auto space-y-6 bg-[#F8FAFC] min-w-0">
@@ -1020,7 +1064,11 @@ function ComedoresPageContent() {
           loading={loadingSummary}
           color="#719C29"
           description={totalDependenciasTooltip}
-          noteText={dependenciasPorAmbitoNote}
+          noteText={
+            [dependenciasPorAmbitoNote, "Total de dependencias incluye CDI."]
+              .filter(Boolean)
+              .join("\n") || "Total de dependencias incluye CDI."
+          }
         />
         <KPICard
           label={labelsKpiConPeriodo.teknofood}
@@ -1030,7 +1078,7 @@ function ComedoresPageContent() {
           icon={HandCoins}
           loading={loadingSummary}
           color="#008275"
-          description="Comprende a los recursos qué son adquiridos de TeknoFoot"
+          description="Comprende a los recursos que son adquiridos de Teknofood"
         />
         <KPICard
           label={labelsKpiConPeriodo.becados}
@@ -1087,17 +1135,25 @@ function ComedoresPageContent() {
           <MapPin className="h-5 w-5 shrink-0 text-green-600 sm:h-6 sm:w-6" />
           Resumen territorial y tipo de dependencia.
         </h3>
-        <div className="grid min-w-0 grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-10">
-          <div className="min-w-0 space-y-5 lg:border-r lg:border-slate-100 lg:pr-8">
-            <div className="rounded-3xl border border-slate-100 bg-gradient-to-br from-slate-50 to-white p-6 shadow-sm sm:p-8">
-              <p className="text-3xl font-black tracking-tight text-slate-800 sm:text-4xl">
-                Capital: {loadingSummary ? "—" : capitalTotalDeps.toLocaleString("es-AR")}
-              </p>
-              <p className="mt-2 text-sm font-semibold text-slate-500">
-                Cantidad de zonas:{" "}
-                {(summary?.comedores_por_zona_capital?.length ?? 0).toLocaleString("es-AR")}
-              </p>
-            </div>
+        <div className="grid min-w-0 grid-cols-1 gap-y-5 lg:grid-cols-2 lg:gap-x-10 lg:gap-y-6">
+          <div className="flex min-h-[7.5rem] flex-col justify-center rounded-3xl border border-slate-100 bg-gradient-to-br from-slate-50 to-white p-6 shadow-sm sm:min-h-[8.5rem] sm:p-8">
+            <p className="text-3xl font-black tracking-tight text-slate-800 sm:text-4xl">
+              Capital: {loadingSummary ? "—" : capitalTotalDeps.toLocaleString("es-AR")}
+            </p>
+            <p className="mt-2 text-sm font-semibold text-slate-500">
+              Cantidad de zonas:{" "}
+              {(summary?.comedores_por_zona_capital?.length ?? 0).toLocaleString("es-AR")}
+            </p>
+          </div>
+          <div className="flex min-h-[7.5rem] flex-col justify-center rounded-3xl border border-slate-100 bg-gradient-to-br from-slate-50 to-white p-6 shadow-sm sm:min-h-[8.5rem] sm:p-8">
+            <p className="text-3xl font-black tracking-tight text-slate-800 sm:text-4xl">
+              Interior: {loadingSummary ? "—" : interiorTotalDeps.toLocaleString("es-AR")}
+            </p>
+            <p className="mt-2 text-sm font-semibold text-transparent select-none" aria-hidden="true">
+              &nbsp;
+            </p>
+          </div>
+          <div className="min-w-0 lg:border-r lg:border-slate-100 lg:pr-8">
             <VerticalTerritorialBars
               titulo="Tipo de dependencia"
               data={capitalTipoBarras}
@@ -1105,12 +1161,7 @@ function ComedoresPageContent() {
               barClassName="bg-emerald-600"
             />
           </div>
-          <div className="min-w-0 space-y-5">
-            <div className="rounded-3xl border border-slate-100 bg-gradient-to-br from-slate-50 to-white p-6 shadow-sm sm:p-8">
-              <p className="text-3xl font-black tracking-tight text-slate-800 sm:text-4xl">
-                Interior: {loadingSummary ? "—" : interiorTotalDeps.toLocaleString("es-AR")}
-              </p>
-            </div>
+          <div className="min-w-0 lg:pl-0">
             <VerticalTerritorialBars
               titulo="Dependencia por departamento"
               data={interiorDepartamentoBarras}
@@ -1530,7 +1581,7 @@ function ComedoresPageContent() {
               </button>
             </div>
             <div className="p-4 sm:p-6 overflow-y-auto space-y-5 sm:space-y-6">
-              {loadingDetail ? (
+              {loadingDetail || !detailReady ? (
                 <div className="h-40 animate-pulse bg-slate-100 rounded-2xl" />
               ) : detail ? (
                 <>
@@ -1555,12 +1606,8 @@ function ComedoresPageContent() {
                         <dt className="font-bold text-slate-600">Tipo de dependencia</dt>
                         <dd className="mt-0.5 break-words">
                           {(() => {
-                            const raw = detail.tipo_nombre?.trim().toUpperCase();
-                            const t =
-                              !raw || raw === "SIN CLASIFICAR" || raw === "SIN_CLASIFICAR" || raw === "COMEDORES"
-                                ? "SIN CLASIFICAR"
-                                : raw.replace(/_/g, " ");
-                            const s = detail.subtipo_nombre?.trim().toUpperCase();
+                            const t = etiquetaTipoDependencia(detail.tipo_nombre ?? "");
+                            const s = detail.subtipo_nombre?.trim();
                             if (s) return `${t} (${s})`;
                             return t;
                           })()}

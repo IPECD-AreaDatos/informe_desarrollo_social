@@ -1,0 +1,26 @@
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(100) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    role VARCHAR(50) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS user_logs (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(100) NOT NULL,
+    pathname TEXT NOT NULL,
+    action VARCHAR(100) NOT NULL,
+    ip_address VARCHAR(45),
+    user_agent TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO users (username, password, role)
+VALUES (
+    'admin',
+    'a83d05e5d39685a90858cd5f92628969:a7ec9941df89f3b52e57448f4dfe4278d64a6bfb78613ec5139809342802fa515c52c64669f92f68f8ea19713cf19e110342bdd7d2866694ace8f6a1d8efe56a',
+    'Administrador'
+)
+ON CONFLICT (username) DO NOTHING;

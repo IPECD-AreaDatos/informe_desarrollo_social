@@ -1,0 +1,30 @@
+[
+  {
+    "id": "teknofood",
+    "titulo": "Evolución de Gasto en Teknofood"
+  },
+  {
+    "id": "becados",
+    "titulo": "Evolución gasto en becados"
+  },
+  {
+    "id": "gas",
+    "titulo": "Evolución precios Gas"
+  },
+  {
+    "id": "fumigacion",
+    "titulo": "Evolución precios fumigación"
+  },
+  {
+    "id": "limpieza",
+    "titulo": "Evolución Precios limpieza"
+  },
+  {
+    "id": "frutas-verduras",
+    "titulo": "Evolución precios Frutas y Verduras"
+  },
+  {
+    "id": "carne",
+    "titulo": "Evolución precios carne"
+  }
+]

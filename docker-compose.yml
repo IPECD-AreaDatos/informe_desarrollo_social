@@ -12,6 +12,11 @@ services:
       DB_USER: ${DB_USER:-app}
       DB_PASSWORD: ${DB_PASSWORD:-app}
       DB_NAME: ${DB_NAME:-informe}
+      PG_HOST: ${PG_HOST:-postgres}
+      PG_PORT: ${PG_PORT:-5432}
+      PG_USER: ${PG_USER:-app}
+      PG_PASSWORD: ${PG_PASSWORD:-app}
+      PG_DATABASE: ${PG_DATABASE:-informe_auth}
       SSH_HOST: ${SSH_HOST:-}
       SSH_PORT: ${SSH_PORT:-22}
       SSH_USER: ${SSH_USER:-}
@@ -19,6 +24,40 @@ services:
       SSH_KEY_PATH: ${SSH_KEY_PATH:-}
     depends_on:
       db:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+
+  app-dev:
+    image: node:20-alpine
+    profiles:
+      - dev
+    working_dir: /app
+    ports:
+      - "3005:3000"
+    env_file:
+      - .env
+    environment:
+      USE_SSH_TUNNEL: ${USE_SSH_TUNNEL:-false}
+      DB_HOST: ${DB_HOST:-db}
+      DB_PORT: ${DB_PORT:-3306}
+      DB_USER: ${DB_USER:-app}
+      DB_PASSWORD: ${DB_PASSWORD:-app}
+      DB_NAME: ${DB_NAME:-informe}
+      PG_HOST: ${PG_HOST:-postgres}
+      PG_PORT: ${PG_PORT:-5432}
+      PG_USER: ${PG_USER:-app}
+      PG_PASSWORD: ${PG_PASSWORD:-app}
+      PG_DATABASE: ${PG_DATABASE:-informe_auth}
+      WATCHPACK_POLLING: "true"
+    volumes:
+      - .:/app
+      - app_dev_node_modules:/app/node_modules
+    command: sh -c "npm install && npm run dev -- -H 0.0.0.0 -p 3000"
+    depends_on:
+      db:
+        condition: service_healthy
+      postgres:
         condition: service_healthy
 
   etl:
@@ -40,6 +79,24 @@ services:
     profiles:
       - etl
 
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${PG_USER:-app}
+      POSTGRES_PASSWORD: ${PG_PASSWORD:-app}
+      POSTGRES_DB: ${PG_DATABASE:-informe_auth}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./sql/postgres:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PG_USER:-app} -d ${PG_DATABASE:-informe_auth}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "5433:5432"
+
   db:
     image: mariadb:11.2
     restart: unless-stopped
@@ -55,8 +112,12 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    ports:
+      - "3307:3306"
     # Reducir uso en disco (opcional)
     command: --innodb_buffer_pool_size=64M --innodb_log_file_size=24M
 
 volumes:
   db_data:
+  pg_data:
+  app_dev_node_modules:

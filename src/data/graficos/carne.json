@@ -1,0 +1,1323 @@
+{
+  "id": "carne",
+  "titulo": "Evolución precios carne",
+  "tabs": [
+    {
+      "id": "historico",
+      "label": "Histórico",
+      "charts": [
+        {
+          "id": "carne-chart-1",
+          "titulo": "Evolución del gasto en carnes contra Mes",
+          "series": [
+            {
+              "name": "Evolución del gasto en carnes",
+              "dataKey": "s0"
+            }
+          ],
+          "data": [
+            {
+              "x": "Ene-Feb",
+              "s0": 326588
+            },
+            {
+              "x": "Feb-Marz",
+              "s0": 326020
+            },
+            {
+              "x": "Mar-Abr",
+              "s0": 343199.5
+            },
+            {
+              "x": "Abr-May",
+              "s0": 364989.05
+            },
+            {
+              "x": "May-Jun",
+              "s0": 360380.7
+            }
+          ],
+          "formatY": "number"
+        }
+      ],
+      "tablas": [
+        {
+          "titulo": "CARNES ENE-FEB",
+          "columnas": [
+            "Zona",
+            "Carne Vacuna kg",
+            "Pollo kg",
+            "Cerdo kg"
+          ],
+          "filas": [
+            [
+              "1",
+              13300,
+              7500,
+              8400
+            ],
+            [
+              "2",
+              13300,
+              7500,
+              8400
+            ],
+            [
+              "3",
+              14765,
+              5000,
+              5550
+            ],
+            [
+              "4",
+              12650,
+              9200,
+              10200
+            ],
+            [
+              "5",
+              14765,
+              5000,
+              5550
+            ],
+            [
+              "6",
+              12420,
+              9200,
+              10200
+            ],
+            [
+              "7",
+              12650,
+              9200,
+              10200
+            ],
+            [
+              "Interior",
+              12180,
+              10850,
+              10690
+            ],
+            [
+              "Ladrilleros I",
+              14648,
+              5000,
+              5500
+            ],
+            [
+              "Ladrilleros II",
+              13700,
+              7000,
+              8350
+            ],
+            [
+              "Mov. Sociales",
+              12180,
+              10850,
+              10690
+            ]
+          ]
+        },
+        {
+          "titulo": "CARNES FEB-MAR",
+          "columnas": [
+            "Zona",
+            "Carne Vacuna kg",
+            "Pollo kg",
+            "Cerdo kg"
+          ],
+          "filas": [
+            [
+              "1",
+              12500,
+              8500,
+              8000
+            ],
+            [
+              "2",
+              12500,
+              8500,
+              8000
+            ],
+            [
+              "3",
+              13800,
+              7000,
+              8300
+            ],
+            [
+              "4",
+              12500,
+              8500,
+              8000
+            ],
+            [
+              "5",
+              13800,
+              7000,
+              8300
+            ],
+            [
+              "6",
+              12230,
+              10900,
+              10750
+            ],
+            [
+              "7",
+              12500,
+              8500,
+              8000
+            ],
+            [
+              "Interior",
+              12700,
+              9500,
+              10200
+            ],
+            [
+              "Ladrilleros I",
+              13900,
+              6800,
+              7300
+            ],
+            [
+              "Ladrilleros II",
+              14590,
+              5000,
+              5550
+            ],
+            [
+              "Mov. Sociales",
+              12700,
+              9500,
+              10200
+            ],
+            [
+              "Total",
+              "",
+              "",
+              ""
+            ]
+          ]
+        },
+        {
+          "titulo": "CARNES MAR-ABR",
+          "columnas": [
+            "Zona",
+            "Carne Vacuna kg",
+            "Pollo kg",
+            "Cerdo kg"
+          ],
+          "filas": [
+            [
+              "1",
+              13500,
+              9800,
+              11500
+            ],
+            [
+              "2",
+              13500,
+              9800,
+              11500
+            ],
+            [
+              "3",
+              13230,
+              11350,
+              11000
+            ],
+            [
+              "4",
+              15151,
+              6054.5,
+              6650.75
+            ],
+            [
+              "5",
+              13230,
+              11350,
+              11000
+            ],
+            [
+              "6",
+              14600,
+              7680,
+              7478
+            ],
+            [
+              "7",
+              15151,
+              6054.5,
+              6650.75
+            ],
+            [
+              "Interior",
+              14500,
+              7800,
+              8300
+            ],
+            [
+              "Ladrilleros I",
+              14800,
+              6750,
+              8000
+            ],
+            [
+              "Ladrilleros II",
+              15669,
+              5000,
+              5550
+            ],
+            [
+              "Mov. Sociales",
+              14500,
+              7800,
+              8300
+            ],
+            [
+              "Total",
+              "",
+              "",
+              ""
+            ]
+          ]
+        },
+        {
+          "titulo": "CARNES ABR-MAY",
+          "columnas": [
+            "Zona",
+            "Carne Vacuna kg",
+            "Pollo kg",
+            "Cerdo kg"
+          ],
+          "filas": [
+            [
+              "1",
+              14800,
+              9000,
+              10300
+            ],
+            [
+              "2",
+              14800,
+              9000,
+              10300
+            ],
+            [
+              "3",
+              14300,
+              9000,
+              10300
+            ],
+            [
+              "4",
+              13760,
+              11800,
+              11440
+            ],
+            [
+              "5",
+              14300,
+              9000,
+              10300
+            ],
+            [
+              "6",
+              16611.9,
+              5200,
+              5550
+            ],
+            [
+              "7",
+              13760,
+              11800,
+              11440
+            ],
+            [
+              "Interior",
+              14850,
+              9500,
+              9400
+            ],
+            [
+              "Ladrilleros I",
+              15786.25,
+              7165.9,
+              7875
+            ],
+            [
+              "Ladrilleros II",
+              15700,
+              7000,
+              7200
+            ],
+            [
+              "Mov. Sociales",
+              14850,
+              9500,
+              9400
+            ],
+            [
+              "Total",
+              "",
+              "",
+              ""
+            ]
+          ]
+        },
+        {
+          "titulo": "CARNES MAY-JUN",
+          "columnas": [
+            "Zona",
+            "Carne Vacuna kg",
+            "Pollo kg",
+            "Cerdo kg"
+          ],
+          "filas": [
+            [
+              "1",
+              15810.25,
+              7150.9,
+              7865
+            ],
+            [
+              "2",
+              15810.25,
+              7150.9,
+              7865
+            ],
+            [
+              "3",
+              14500,
+              9150,
+              9050
+            ],
+            [
+              "4",
+              14200,
+              9800,
+              11200
+            ],
+            [
+              "5",
+              14500,
+              9150,
+              9050
+            ],
+            [
+              "6",
+              14200,
+              9800,
+              11200
+            ],
+            [
+              "7",
+              14200,
+              9800,
+              11200
+            ],
+            [
+              "Interior",
+              15500,
+              7800,
+              8300
+            ],
+            [
+              "Ladrilleros I",
+              16611.9,
+              5200,
+              5550
+            ],
+            [
+              "Ladrilleros II",
+              13926.5,
+              11800,
+              11440
+            ],
+            [
+              "Mov. Sociales",
+              15500,
+              7800,
+              8300
+            ],
+            [
+              "Total",
+              "",
+              "",
+              ""
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "evolucion-precio",
+      "label": "Evolución precio",
+      "charts": [
+        {
+          "id": "carne-chart-2",
+          "titulo": "Evolución precios Zonas 1 y 2",
+          "series": [
+            {
+              "name": "7500 8500",
+              "dataKey": "s0"
+            },
+            {
+              "name": "8400 8000",
+              "dataKey": "s1"
+            },
+            {
+              "name": "Serie 3",
+              "dataKey": "s2"
+            }
+          ],
+          "data": [
+            {
+              "x": "13500",
+              "s0": 9800,
+              "s1": 11500
+            },
+            {
+              "x": "14800",
+              "s0": 9000,
+              "s1": 10300
+            },
+            {
+              "x": "15810.25",
+              "s0": 7150.9,
+              "s1": 7865
+            }
+          ],
+          "formatY": "number"
+        },
+        {
+          "id": "carne-chart-3",
+          "titulo": "Evolución precios Zonas 3 y 5",
+          "series": [
+            {
+              "name": "5000 7000",
+              "dataKey": "s0"
+            },
+            {
+              "name": "5550 8300",
+              "dataKey": "s1"
+            },
+            {
+              "name": "Serie 3",
+              "dataKey": "s2"
+            }
+          ],
+          "data": [
+            {
+              "x": "13230",
+              "s0": 11350,
+              "s1": 11000
+            },
+            {
+              "x": "14300",
+              "s0": 9000,
+              "s1": 10300
+            },
+            {
+              "x": "14500",
+              "s0": 9150,
+              "s1": 9050
+            }
+          ],
+          "formatY": "number"
+        },
+        {
+          "id": "carne-chart-4",
+          "titulo": "Evolución precios Zonas 4 y 7",
+          "series": [
+            {
+              "name": "9200 8500",
+              "dataKey": "s0"
+            },
+            {
+              "name": "10200 8000",
+              "dataKey": "s1"
+            },
+            {
+              "name": "Serie 3",
+              "dataKey": "s2"
+            }
+          ],
+          "data": [
+            {
+              "x": "15151",
+              "s0": 6054.5,
+              "s1": 6650.75
+            },
+            {
+              "x": "13760",
+              "s0": 11800,
+              "s1": 11440
+            },
+            {
+              "x": "14200",
+              "s0": 9800,
+              "s1": 11200
+            }
+          ],
+          "formatY": "number"
+        },
+        {
+          "id": "carne-chart-5",
+          "titulo": "Evolución precios Zona 6",
+          "series": [
+            {
+              "name": "9200 10900",
+              "dataKey": "s0"
+            },
+            {
+              "name": "10200 10750",
+              "dataKey": "s1"
+            },
+            {
+              "name": "Serie 3",
+              "dataKey": "s2"
+            }
+          ],
+          "data": [
+            {
+              "x": "14600",
+              "s0": 7680,
+              "s1": 7478
+            },
+            {
+              "x": "16611.9",
+              "s0": 5200,
+              "s1": 5550
+            },
+            {
+              "x": "14200",
+              "s0": 9800,
+              "s1": 11200
+            }
+          ],
+          "formatY": "number"
+        },
+        {
+          "id": "carne-chart-6",
+          "titulo": "Evolución precios Zona Ladrilleros I",
+          "series": [
+            {
+              "name": "5000 6800",
+              "dataKey": "s0"
+            },
+            {
+              "name": "5550 7300",
+              "dataKey": "s1"
+            },
+            {
+              "name": "Serie 3",
+              "dataKey": "s2"
+            }
+          ],
+          "data": [
+            {
+              "x": "14800",
+              "s0": 6750,
+              "s1": 8000
+            },
+            {
+              "x": "15786.25",
+              "s0": 7165.9,
+              "s1": 7875
+            },
+            {
+              "x": "16611.9",
+              "s0": 5200,
+              "s1": 5550
+            }
+          ],
+          "formatY": "number"
+        },
+        {
+          "id": "carne-chart-7",
+          "titulo": "Evolución precios Zona Ladrilleros II",
+          "series": [
+            {
+              "name": "7000 5000",
+              "dataKey": "s0"
+            },
+            {
+              "name": "8350 5550",
+              "dataKey": "s1"
+            },
+            {
+              "name": "Serie 3",
+              "dataKey": "s2"
+            }
+          ],
+          "data": [
+            {
+              "x": "15669",
+              "s0": 5000,
+              "s1": 5550
+            },
+            {
+              "x": "15700",
+              "s0": 7000,
+              "s1": 7200
+            },
+            {
+              "x": "13926.5",
+              "s0": 11800,
+              "s1": 11440
+            }
+          ],
+          "formatY": "number"
+        },
+        {
+          "id": "carne-chart-8",
+          "titulo": "Evolución precios Zonas Interior y Movimientos sociales",
+          "series": [
+            {
+              "name": "10850 9500",
+              "dataKey": "s0"
+            },
+            {
+              "name": "10690 10200",
+              "dataKey": "s1"
+            },
+            {
+              "name": "Serie 3",
+              "dataKey": "s2"
+            }
+          ],
+          "data": [
+            {
+              "x": "14500",
+              "s0": 7800,
+              "s1": 8300
+            },
+            {
+              "x": "14850",
+              "s0": 9500,
+              "s1": 9400
+            },
+            {
+              "x": "15500",
+              "s0": 7800,
+              "s1": 8300
+            }
+          ],
+          "formatY": "number"
+        },
+        {
+          "id": "carne-chart-9",
+          "titulo": "Evolución precios zona 1",
+          "series": [
+            {
+              "name": "7500 8500",
+              "dataKey": "s0"
+            },
+            {
+              "name": "8400 8000",
+              "dataKey": "s1"
+            },
+            {
+              "name": "Serie 3",
+              "dataKey": "s2"
+            }
+          ],
+          "data": [
+            {
+              "x": "13500",
+              "s0": 9800,
+              "s1": 11500
+            },
+            {
+              "x": "14800",
+              "s0": 9000,
+              "s1": 10300
+            },
+            {
+              "x": "15810.25",
+              "s0": 7150.9,
+              "s1": 7865
+            }
+          ],
+          "formatY": "number"
+        },
+        {
+          "id": "carne-chart-10",
+          "titulo": "Evolución precios zona 2",
+          "series": [
+            {
+              "name": "7500 8500",
+              "dataKey": "s0"
+            },
+            {
+              "name": "8400 8000",
+              "dataKey": "s1"
+            },
+            {
+              "name": "Serie 3",
+              "dataKey": "s2"
+            }
+          ],
+          "data": [
+            {
+              "x": "13500",
+              "s0": 9800,
+              "s1": 11500
+            },
+            {
+              "x": "14800",
+              "s0": 9000,
+              "s1": 10300
+            },
+            {
+              "x": "15810.25",
+              "s0": 7150.9,
+              "s1": 7865
+            }
+          ],
+          "formatY": "number"
+        },
+        {
+          "id": "carne-chart-11",
+          "titulo": "Evolución precios zona 3",
+          "series": [
+            {
+              "name": "5000 7000",
+              "dataKey": "s0"
+            },
+            {
+              "name": "5550 8300",
+              "dataKey": "s1"
+            },
+            {
+              "name": "Serie 3",
+              "dataKey": "s2"
+            }
+          ],
+          "data": [
+            {
+              "x": "13230",
+              "s0": 11350,
+              "s1": 11000
+            },
+            {
+              "x": "14300",
+              "s0": 9000,
+              "s1": 10300
+            },
+            {
+              "x": "14500",
+              "s0": 9150,
+              "s1": 9050
+            }
+          ],
+          "formatY": "number"
+        },
+        {
+          "id": "carne-chart-12",
+          "titulo": "Evolución precios zona 5",
+          "series": [
+            {
+              "name": "5000 7000",
+              "dataKey": "s0"
+            },
+            {
+              "name": "5550 8300",
+              "dataKey": "s1"
+            },
+            {
+              "name": "Serie 3",
+              "dataKey": "s2"
+            }
+          ],
+          "data": [
+            {
+              "x": "13230",
+              "s0": 11350,
+              "s1": 11000
+            },
+            {
+              "x": "14300",
+              "s0": 9000,
+              "s1": 10300
+            },
+            {
+              "x": "14500",
+              "s0": 9150,
+              "s1": 9050
+            }
+          ],
+          "formatY": "number"
+        },
+        {
+          "id": "carne-chart-13",
+          "titulo": "Evolución precios zona 4",
+          "series": [
+            {
+              "name": "9200 8500",
+              "dataKey": "s0"
+            },
+            {
+              "name": "10200 8000",
+              "dataKey": "s1"
+            },
+            {
+              "name": "Serie 3",
+              "dataKey": "s2"
+            }
+          ],
+          "data": [
+            {
+              "x": "15151",
+              "s0": 6054.5,
+              "s1": 6650.75
+            },
+            {
+              "x": "13760",
+              "s0": 11800,
+              "s1": 11440
+            },
+            {
+              "x": "14200",
+              "s0": 9800,
+              "s1": 11200
+            }
+          ],
+          "formatY": "number"
+        },
+        {
+          "id": "carne-chart-14",
+          "titulo": "Evolución precios zona 7",
+          "series": [
+            {
+              "name": "9200 8500",
+              "dataKey": "s0"
+            },
+            {
+              "name": "10200 8000",
+              "dataKey": "s1"
+            },
+            {
+              "name": "Serie 3",
+              "dataKey": "s2"
+            }
+          ],
+          "data": [
+            {
+              "x": "15151",
+              "s0": 6054.5,
+              "s1": 6650.75
+            },
+            {
+              "x": "13760",
+              "s0": 11800,
+              "s1": 11440
+            },
+            {
+              "x": "14200",
+              "s0": 9800,
+              "s1": 11200
+            }
+          ],
+          "formatY": "number"
+        },
+        {
+          "id": "carne-chart-15",
+          "titulo": "Evolución precios zona interior",
+          "series": [
+            {
+              "name": "10850 9500",
+              "dataKey": "s0"
+            },
+            {
+              "name": "10690 10200",
+              "dataKey": "s1"
+            },
+            {
+              "name": "Serie 3",
+              "dataKey": "s2"
+            }
+          ],
+          "data": [
+            {
+              "x": "14500",
+              "s0": 7800,
+              "s1": 8300
+            },
+            {
+              "x": "14850",
+              "s0": 9500,
+              "s1": 9400
+            },
+            {
+              "x": "15500",
+              "s0": 7800,
+              "s1": 8300
+            }
+          ],
+          "formatY": "number"
+        },
+        {
+          "id": "carne-chart-16",
+          "titulo": "Evolución precios movimientos sociales",
+          "series": [
+            {
+              "name": "10850 9500",
+              "dataKey": "s0"
+            },
+            {
+              "name": "10690 10200",
+              "dataKey": "s1"
+            },
+            {
+              "name": "Serie 3",
+              "dataKey": "s2"
+            }
+          ],
+          "data": [
+            {
+              "x": "14500",
+              "s0": 7800,
+              "s1": 8300
+            },
+            {
+              "x": "14850",
+              "s0": 9500,
+              "s1": 9400
+            },
+            {
+              "x": "15500",
+              "s0": 7800,
+              "s1": 8300
+            }
+          ],
+          "formatY": "number"
+        }
+      ]
+    },
+    {
+      "id": "precio-zona",
+      "label": "Precio por zona",
+      "charts": [
+        {
+          "id": "carne-chart-17",
+          "titulo": "Precios por zona Enero - Carnes",
+          "series": [
+            {
+              "name": "Carne Vacuna kg",
+              "dataKey": "s0"
+            },
+            {
+              "name": "Pollo kg",
+              "dataKey": "s1"
+            },
+            {
+              "name": "Cerdo kg",
+              "dataKey": "s2"
+            }
+          ],
+          "data": [
+            {
+              "x": "1 y 2",
+              "s0": 13300,
+              "s1": 7500,
+              "s2": 8400
+            },
+            {
+              "x": "3 y 5",
+              "s0": 14765,
+              "s1": 5000,
+              "s2": 5550
+            },
+            {
+              "x": "4 y 7",
+              "s0": 12650,
+              "s1": 9200,
+              "s2": 10200
+            },
+            {
+              "x": "6",
+              "s0": 12420,
+              "s1": 9200,
+              "s2": 10200
+            },
+            {
+              "x": "Interior - Mov Sociales",
+              "s0": 12180,
+              "s1": 10850,
+              "s2": 10690
+            },
+            {
+              "x": "Ladrilleros I",
+              "s0": 14648,
+              "s1": 5000,
+              "s2": 5500
+            },
+            {
+              "x": "Ladrilleros II",
+              "s0": 13700,
+              "s1": 7000,
+              "s2": 8350
+            }
+          ],
+          "formatY": "number"
+        },
+        {
+          "id": "carne-chart-18",
+          "titulo": "Precios por zona Febrero - Carnes",
+          "series": [
+            {
+              "name": "Carne Vacuna kg",
+              "dataKey": "s0"
+            },
+            {
+              "name": "Pollo kg",
+              "dataKey": "s1"
+            },
+            {
+              "name": "Cerdo kg",
+              "dataKey": "s2"
+            }
+          ],
+          "data": [
+            {
+              "x": "1 y 2",
+              "s0": 12500,
+              "s1": 8500,
+              "s2": 8000
+            },
+            {
+              "x": "3 y 5",
+              "s0": 13800,
+              "s1": 7000,
+              "s2": 8300
+            },
+            {
+              "x": "4 y 7",
+              "s0": 12500,
+              "s1": 8500,
+              "s2": 8000
+            },
+            {
+              "x": "6",
+              "s0": 12230,
+              "s1": 10900,
+              "s2": 10750
+            },
+            {
+              "x": "Interior - Mov Sociales",
+              "s0": 12700,
+              "s1": 9500,
+              "s2": 10200
+            },
+            {
+              "x": "Ladrilleros I",
+              "s0": 13900,
+              "s1": 6800,
+              "s2": 7300
+            },
+            {
+              "x": "Ladrilleros II",
+              "s0": 14590,
+              "s1": 5000,
+              "s2": 5550
+            }
+          ],
+          "formatY": "number"
+        },
+        {
+          "id": "carne-chart-19",
+          "titulo": "Precios por zona Marzo - Carnes",
+          "series": [
+            {
+              "name": "Carne Vacuna kg",
+              "dataKey": "s0"
+            },
+            {
+              "name": "Pollo kg",
+              "dataKey": "s1"
+            },
+            {
+              "name": "Cerdo kg",
+              "dataKey": "s2"
+            }
+          ],
+          "data": [
+            {
+              "x": "1 y 2",
+              "s0": 13500,
+              "s1": 9800,
+              "s2": 11500
+            },
+            {
+              "x": "3 y 5",
+              "s0": 13230,
+              "s1": 11350,
+              "s2": 11000
+            },
+            {
+              "x": "4 y 7",
+              "s0": 15151,
+              "s1": 6054.5,
+              "s2": 6650.75
+            },
+            {
+              "x": "6",
+              "s0": 14600,
+              "s1": 7680,
+              "s2": 7478
+            },
+            {
+              "x": "Interior - Mov Sociales",
+              "s0": 14500,
+              "s1": 7800,
+              "s2": 8300
+            },
+            {
+              "x": "Ladrilleros I",
+              "s0": 14800,
+              "s1": 6750,
+              "s2": 8000
+            },
+            {
+              "x": "Ladrilleros II",
+              "s0": 15669,
+              "s1": 5000,
+              "s2": 5550
+            }
+          ],
+          "formatY": "number"
+        },
+        {
+          "id": "carne-chart-20",
+          "titulo": "Precios por zona Abril - Carnes",
+          "series": [
+            {
+              "name": "Carne Vacuna kg",
+              "dataKey": "s0"
+            },
+            {
+              "name": "Pollo kg",
+              "dataKey": "s1"
+            },
+            {
+              "name": "Cerdo kg",
+              "dataKey": "s2"
+            }
+          ],
+          "data": [
+            {
+              "x": "1 y 2",
+              "s0": 14800,
+              "s1": 9000,
+              "s2": 10300
+            },
+            {
+              "x": "3 y 5",
+              "s0": 14300,
+              "s1": 9000,
+              "s2": 10300
+            },
+            {
+              "x": "4 y 7",
+              "s0": 13760,
+              "s1": 11800,
+              "s2": 11440
+            },
+            {
+              "x": "6",
+              "s0": 16611.9,
+              "s1": 5200,
+              "s2": 5550
+            },
+            {
+              "x": "Interior - Mov Sociales",
+              "s0": 14850,
+              "s1": 9500,
+              "s2": 9400
+            },
+            {
+              "x": "Ladrilleros I",
+              "s0": 15786.25,
+              "s1": 7165.9,
+              "s2": 7875
+            },
+            {
+              "x": "Ladrilleros II",
+              "s0": 15700,
+              "s1": 7000,
+              "s2": 7200
+            }
+          ],
+          "formatY": "number"
+        },
+        {
+          "id": "carne-chart-21",
+          "titulo": "Precios por zona Mayo - Carnes",
+          "series": [
+            {
+              "name": "Carne Vacuna kg",
+              "dataKey": "s0"
+            },
+            {
+              "name": "Pollo kg",
+              "dataKey": "s1"
+            },
+            {
+              "name": "Cerdo kg",
+              "dataKey": "s2"
+            }
+          ],
+          "data": [
+            {
+              "x": "1 y 2",
+              "s0": 15810.25,
+              "s1": 7150.9,
+              "s2": 7865
+            },
+            {
+              "x": "3 y 5",
+              "s0": 14500,
+              "s1": 9150,
+              "s2": 9050
+            },
+            {
+              "x": "4 y 7",
+              "s0": 14200,
+              "s1": 9800,
+              "s2": 11200
+            },
+            {
+              "x": "6",
+              "s0": 14200,
+              "s1": 9800,
+              "s2": 11200
+            },
+            {
+              "x": "Interior - Mov Sociales",
+              "s0": 15500,
+              "s1": 7800,
+              "s2": 8300
+            },
+            {
+              "x": "Ladrilleros I",
+              "s0": 16611.9,
+              "s1": 5200,
+              "s2": 5550
+            },
+            {
+              "x": "Ladrilleros II",
+              "s0": 13926.5,
+              "s1": 11800,
+              "s2": 11440
+            }
+          ],
+          "formatY": "number"
+        }
+      ]
+    }
+  ]
+}

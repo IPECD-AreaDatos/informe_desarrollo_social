@@ -19,6 +19,8 @@ function getPageName(path: string): string {
             return 'Resumen Central';
         case '/comedores':
             return 'Seguridad Alimentaria';
+        case '/comedores/graficos':
+            return 'Gráficos — Seguridad Alimentaria';
         case '/vulnerabilidad':
             return 'Perfil Vulnerabilidad';
         case '/educacion':

@@ -5,11 +5,15 @@ dotenv.config();
 
 async function main() {
     const dbConfig = {
-        host: process.env.HOST_DBB1,
-        port: 5432,
-        user: process.env.USER_DBB1,
-        password: process.env.PASSWORD_DBB1,
-        database: (process.env.BASE_DESARROLLO_SOCIAL || '').trim(),
+        host: process.env.PG_HOST || process.env.HOST_DBB1 || 'localhost',
+        port: parseInt(process.env.PG_PORT || '5432', 10),
+        user: process.env.PG_USER || process.env.USER_DBB1 || 'app',
+        password: process.env.PG_PASSWORD || process.env.PASSWORD_DBB1 || 'app',
+        database: (
+            process.env.PG_DATABASE ||
+            process.env.BASE_DESARROLLO_SOCIAL ||
+            'informe_auth'
+        ).trim(),
     };
 
     console.log(`Connecting to database ${dbConfig.database} on ${dbConfig.host}...`);
@@ -56,6 +60,20 @@ async function main() {
             );
         `);
         console.log('Users table created.');
+
+        console.log('Creating "user_logs" table...');
+        await client.query(`
+            CREATE TABLE user_logs (
+                id SERIAL PRIMARY KEY,
+                username VARCHAR(100) NOT NULL,
+                pathname TEXT NOT NULL,
+                action VARCHAR(100) NOT NULL,
+                ip_address VARCHAR(45),
+                user_agent TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+        console.log('User logs table created.');
 
         // Seed default admin user
         const adminUser = 'admin';

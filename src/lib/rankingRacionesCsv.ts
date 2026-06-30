@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { cantidadSemanalAMensual } from './presupuestoCantidadesSemanalMensual';
 import { montoTeknofoodDesdeRaciones } from './teknofood';
+import { periodoSlugParaDatos } from './periodosDemo';
 
 /** Datos de ranking «raciones consolidado» por ID de padrón (CSV). */
 export interface RankingRacionesCsvRow {
@@ -302,7 +303,7 @@ export function findGlobFile(dir: string, pattern: RegExp): string | null {
 
 /** `marzo-2026` → `docs/marzo` bajo la raíz del proyecto. */
 export function docsDirForPeriodo(periodo: string): string | null {
-  const slug = String(periodo ?? '').trim().toLowerCase();
+  const slug = periodoSlugParaDatos(String(periodo ?? '').trim().toLowerCase());
   if (!slug) return null;
   const parts = slug.split('-');
   if (parts.length < 2) return null;

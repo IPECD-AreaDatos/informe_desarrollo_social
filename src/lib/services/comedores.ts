@@ -26,6 +26,8 @@ import {
   lookupTeknofoodPadronForComedor,
   totalRacionesTeknofoodForPeriodo,
 } from '../rankingRacionesCsv';
+import { loadCapitalHoja1PorTipo, lookupCapitalHoja1TipoPorId } from '../capitalHoja1Tipos';
+import { PERIODOS_UI_HASTA_JUNIO_2026, periodoSlugParaDatos } from '../periodosDemo';
 /** Orden cronológico para slugs tipo `marzo-2026` (no lexicográfico). */
 const MESES_SLUG: Record<string, number> = {
   enero: 1,
@@ -478,7 +480,7 @@ export interface BecariosDesglose {
 async function getSummaryByPeriodo(periodo: string): Promise<ComedoresSummary> {
   const { connection, close } = await getComedoresConnection();
   try {
-    const pSl = String(periodo ?? '').trim();
+    const pSl = periodoSlugParaDatos(String(periodo ?? '').trim());
     await connection.execute(`SET @cp = CONVERT(? USING utf8mb4) COLLATE utf8mb4_unicode_ci`, [pSl]);
     const periodBind = [pSl, pSl] as const;
     const [totalRows]: any = await connection.execute(`SELECT COUNT(*) AS total FROM COMEDOR c`);
@@ -760,6 +762,11 @@ async function getSummaryByPeriodo(periodo: string): Promise<ComedoresSummary> {
       }));
     } catch (e: any) {
       if (e?.code !== 'ER_NO_SUCH_TABLE') throw e;
+    }
+
+    const porTipoCapitalCsv = loadCapitalHoja1PorTipo(periodo);
+    if (porTipoCapitalCsv?.length) {
+      porTipoCapital = porTipoCapitalCsv;
     }
 
     let interiorPorDepartamento: { departamento: string; cantidad: number }[] = [];
@@ -1135,7 +1142,7 @@ async function getRankingsBecariosCapital(params: {
   const offsetVal = Math.max(0, params.offset ?? 0);
   const { connection, close } = await getComedoresConnection();
   try {
-    const pRank = String(params.periodo ?? '').trim();
+    const pRank = periodoSlugParaDatos(String(params.periodo ?? '').trim());
     await connection.execute(`SET @cp = CONVERT(? USING utf8mb4) COLLATE utf8mb4_unicode_ci`, [pRank]);
     const [rows]: any = await connection.execute(
       `SELECT b.codigo_csv, b.apellido, b.nombre, b.localidad, b.funcion, l.monto_neto
@@ -1208,7 +1215,7 @@ async function getRankings(params: {
   const { connection, close } = await getComedoresConnection();
 
   try {
-    const pRank = String(params.periodo ?? '').trim();
+    const pRank = periodoSlugParaDatos(String(params.periodo ?? '').trim());
     await connection.execute(`SET @cp = CONVERT(? USING utf8mb4) COLLATE utf8mb4_unicode_ci`, [pRank]);
     const pBind = [pRank, pRank] as const;
     if (params.tipo === 'beneficiarios') {
@@ -1818,7 +1825,7 @@ async function getRankings(params: {
 async function getComedorDetail(comedorId: string, periodo: string): Promise<ComedorDetail | null> {
   const { connection, close } = await getComedoresConnection();
   try {
-    const pDet = String(periodo ?? '').trim();
+    const pDet = periodoSlugParaDatos(String(periodo ?? '').trim());
     await connection.execute(`SET @cp = CONVERT(? USING utf8mb4) COLLATE utf8mb4_unicode_ci`, [pDet]);
     const pb = [pDet, pDet] as const;
     const [comedor]: any = await connection.execute(
@@ -1836,6 +1843,18 @@ async function getComedorDetail(comedorId: string, periodo: string): Promise<Com
     );
     if (!comedor?.length) return null;
     const c = comedor[0];
+
+    let tipoNombre = c.tipo_nombre != null ? String(c.tipo_nombre).trim() : '';
+    const tipoSinClasificar =
+      !tipoNombre || /^(sin clasificar|sin_clasificar|comedores)$/i.test(tipoNombre);
+    if (String(c.ambito).toUpperCase() === 'CAPITAL' && tipoSinClasificar) {
+      const fromCsv = lookupCapitalHoja1TipoPorId(
+        pDet,
+        rowComedorId(c.comedor_id),
+        c.numero_oficial
+      );
+      if (fromCsv) tipoNombre = fromCsv;
+    }
 
     const [ben]: any = await connection.execute(
       `SELECT COALESCE(SUM(cantidad_beneficiarios), 0) AS total FROM RACION WHERE comedor_id = ?
@@ -2214,7 +2233,7 @@ async function getComedorDetail(comedorId: string, periodo: string): Promise<Com
       ambito: c.ambito,
       departamento: c.departamento,
       localidad: c.localidad,
-      tipo_nombre: c.tipo_nombre,
+      tipo_nombre: tipoNombre || c.tipo_nombre,
       subtipo_nombre: c.subtipo_nombre,
       organismo_nombre: c.organismo_nombre,
       responsable_nombre: c.responsable_nombre,
@@ -2292,28 +2311,7 @@ async function getBecariosDesglose(): Promise<BecariosDesglose> {
 }
 
 async function getPeriodosDisponibles(): Promise<PeriodoOption[]> {
-  const { connection, close } = await getComedoresConnection();
-  try {
-    const [plan]: any = await connection.execute(
-      `SELECT DISTINCT plan_ref AS valor FROM RACION WHERE plan_ref IS NOT NULL AND plan_ref != '' ORDER BY 1 DESC LIMIT 20`
-    );
-    const [periodo]: any = await connection.execute(
-      `SELECT DISTINCT periodo AS valor FROM BENEFICIO_GAS WHERE periodo IS NOT NULL AND periodo != '' ORDER BY 1 DESC LIMIT 20`
-    );
-    const set = new Set<string>();
-    (plan as any[]).forEach((r: any) => r.valor && set.add(r.valor));
-    (periodo as any[]).forEach((r: any) => r.valor && set.add(r.valor));
-    const arr = Array.from(set).sort((a, b) => {
-      const [ya, ma] = periodoSlugSortKey(a);
-      const [yb, mb] = periodoSlugSortKey(b);
-      if (yb !== ya) return yb - ya;
-      if (mb !== ma) return mb - ma;
-      return b.localeCompare(a);
-    });
-    return arr.length ? arr.map((v) => ({ valor: v, etiqueta: v })) : [{ valor: '', etiqueta: 'Todos' }];
-  } finally {
-    await close();
-  }
+  return [...PERIODOS_UI_HASTA_JUNIO_2026];
 }
 
 export const comedoresService = {

@@ -1,0 +1,43 @@
+{
+  "id": "limpieza",
+  "titulo": "Evolución Precios limpieza",
+  "charts": [
+    {
+      "id": "limpieza-1",
+      "titulo": "Evolución del gasto en limpieza",
+      "series": [
+        {
+          "name": "Evolución del gasto en limpieza",
+          "dataKey": "s0"
+        }
+      ],
+      "data": [
+        {
+          "x": "Enero",
+          "s0": 4437266
+        },
+        {
+          "x": "Febrero",
+          "s0": 4437266
+        },
+        {
+          "x": "Marzo",
+          "s0": 4437266
+        },
+        {
+          "x": "Abril",
+          "s0": 4437266
+        },
+        {
+          "x": "Mayo",
+          "s0": 4437266
+        },
+        {
+          "x": "Junio",
+          "s0": 4437266
+        }
+      ],
+      "formatY": "ars"
+    }
+  ]
+}

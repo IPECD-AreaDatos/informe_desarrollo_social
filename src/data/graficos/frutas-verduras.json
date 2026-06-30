@@ -1,0 +1,1428 @@
+{
+  "id": "frutas-verduras",
+  "titulo": "Evolución precios Frutas y Verduras",
+  "tabs": [
+    {
+      "id": "historico",
+      "label": "Histórico",
+      "charts": [
+        {
+          "id": "frutas-verduras-chart-1",
+          "titulo": "Evolución del total de gastos en frutas y verduras por mes",
+          "series": [
+            {
+              "name": "Total de gastos por mes (sin diferenciar)",
+              "dataKey": "s0"
+            }
+          ],
+          "data": [
+            {
+              "x": "Ene-Feb",
+              "s0": 104148.5
+            },
+            {
+              "x": "Feb-Marz",
+              "s0": 100635.6
+            },
+            {
+              "x": "Mar-Abr",
+              "s0": 88536.55
+            },
+            {
+              "x": "Abr-May",
+              "s0": 187552.25
+            },
+            {
+              "x": "May-Jun",
+              "s0": 100603.75
+            }
+          ],
+          "formatY": "number"
+        }
+      ],
+      "tablas": [
+        {
+          "titulo": "FRUTAS Y VERDURAS ENE-FEB",
+          "columnas": [
+            "Zona",
+            "Cebolla kg",
+            "Zanahoria kg",
+            "Zapallo kg",
+            "Papa kg",
+            "Acelga kg",
+            "Frutas Un."
+          ],
+          "filas": [
+            [
+              "1",
+              1115,
+              1181,
+              1050,
+              1539,
+              3420,
+              275.5
+            ],
+            [
+              "2",
+              1115,
+              1181,
+              1050,
+              1539,
+              3420,
+              275.5
+            ],
+            [
+              "3",
+              1115,
+              1181,
+              1050,
+              1539,
+              3420,
+              275.5
+            ],
+            [
+              "4",
+              1200,
+              1200,
+              1200,
+              1200,
+              1300,
+              280
+            ],
+            [
+              "Norte",
+              845,
+              830,
+              825,
+              830,
+              825,
+              325
+            ],
+            [
+              "Sur",
+              3200,
+              3200,
+              3200,
+              3200,
+              3400,
+              190
+            ],
+            [
+              "Ladrilleros",
+              1000,
+              1000,
+              1100,
+              950,
+              4000,
+              265
+            ],
+            [
+              "Interior",
+              4500,
+              4350,
+              4500,
+              4050,
+              4000,
+              21
+            ],
+            [
+              "Movimientos Sociales",
+              4500,
+              4350,
+              4500,
+              4050,
+              4000,
+              21
+            ]
+          ]
+        },
+        {
+          "titulo": "FRUTAS Y VERDURAS FEB-MAR",
+          "columnas": [
+            "Zona",
+            "Cebolla kg",
+            "Zanahoria kg",
+            "Zapallo kg",
+            "Papa kg",
+            "Acelga kg",
+            "Frutas Un."
+          ],
+          "filas": [
+            [
+              "1",
+              1115,
+              1181,
+              1050,
+              1539,
+              3050,
+              309
+            ],
+            [
+              "2",
+              1115,
+              1181,
+              1050,
+              1539,
+              3050,
+              309
+            ],
+            [
+              "3",
+              1115,
+              1181,
+              1050,
+              1539,
+              3050,
+              309
+            ],
+            [
+              "4",
+              1300,
+              1300,
+              1300,
+              1450,
+              1500,
+              295
+            ],
+            [
+              "Norte",
+              1199,
+              787,
+              1390,
+              707,
+              2454.55,
+              310.05
+            ],
+            [
+              "Sur",
+              1115,
+              1181,
+              1050,
+              1539,
+              2880,
+              309
+            ],
+            [
+              "Ladrilleros",
+              1620,
+              1900,
+              1370,
+              1460,
+              2390,
+              269
+            ],
+            [
+              "Interior",
+              4500,
+              4500,
+              4500,
+              4000,
+              4900,
+              14
+            ],
+            [
+              "Movimientos Sociales",
+              4500,
+              4500,
+              4500,
+              4000,
+              4900,
+              14
+            ]
+          ]
+        },
+        {
+          "titulo": "FRUTAS Y VERDURAS MAR-ABR",
+          "columnas": [
+            "Zona",
+            "Cebolla kg",
+            "Zanahoria kg",
+            "Zapallo kg",
+            "Papa kg",
+            "Acelga kg",
+            "Frutas Un."
+          ],
+          "filas": [
+            [
+              "1",
+              1600,
+              1600,
+              1600,
+              1700,
+              1400,
+              290.45
+            ],
+            [
+              "2",
+              1600,
+              1600,
+              1600,
+              1700,
+              1400,
+              290.45
+            ],
+            [
+              "3",
+              1600,
+              1600,
+              1600,
+              1700,
+              1400,
+              290.45
+            ],
+            [
+              "4",
+              1115,
+              1181,
+              1050,
+              1530,
+              2800,
+              294
+            ],
+            [
+              "Norte",
+              1200,
+              1200,
+              1700,
+              1300,
+              4500,
+              283
+            ],
+            [
+              "Sur",
+              3200,
+              3200,
+              3200,
+              3200,
+              3500,
+              190
+            ],
+            [
+              "Ladrilleros",
+              1262,
+              1150,
+              1350,
+              1310,
+              1300,
+              300
+            ],
+            [
+              "Interior",
+              1080,
+              2435.3,
+              1550,
+              1058.8,
+              4950,
+              251
+            ],
+            [
+              "Movimientos Sociales",
+              1080,
+              2435.3,
+              1550,
+              1058.8,
+              4950,
+              251
+            ]
+          ]
+        },
+        {
+          "titulo": "FRUTAS Y VERDURAS ABR-MAY",
+          "columnas": [
+            "Zona",
+            "Cebolla kg",
+            "Zanahoria kg",
+            "Zapallo kg",
+            "Papa kg",
+            "Acelga kg",
+            "Frutas Un."
+          ],
+          "filas": [
+            [
+              "1",
+              7650,
+              7900,
+              7800,
+              7800,
+              7900,
+              35
+            ],
+            [
+              "2",
+              7650,
+              7900,
+              7800,
+              7800,
+              7900,
+              35
+            ],
+            [
+              "3",
+              7650,
+              7900,
+              7800,
+              7800,
+              7900,
+              35
+            ],
+            [
+              "4",
+              3700,
+              3700,
+              3700,
+              3700,
+              3700,
+              203.25
+            ],
+            [
+              "Norte",
+              1650,
+              1650,
+              1850,
+              1600,
+              1800,
+              340
+            ],
+            [
+              "Sur",
+              2100,
+              2100,
+              1750,
+              2100,
+              3300,
+              320
+            ],
+            [
+              "Ladrilleros",
+              1900,
+              1900,
+              1900,
+              1990,
+              1600,
+              314
+            ],
+            [
+              "Interior",
+              1300,
+              1300,
+              1800,
+              1500,
+              4500,
+              315
+            ],
+            [
+              "Movimientos Sociales",
+              1300,
+              1300,
+              1800,
+              1500,
+              4500,
+              315
+            ]
+          ]
+        },
+        {
+          "titulo": "FRUTAS Y VERDURAS MAY-JUN",
+          "columnas": [
+            "Zona",
+            "Cebolla kg",
+            "Zanahoria kg",
+            "Zapallo kg",
+            "Papa kg",
+            "Acelga kg",
+            "Frutas Un."
+          ],
+          "filas": [
+            [
+              "1",
+              1440,
+              1190,
+              1422,
+              1356,
+              4190,
+              351.5
+            ],
+            [
+              "2",
+              1440,
+              1190,
+              1422,
+              1356,
+              4190,
+              351.5
+            ],
+            [
+              "3",
+              1440,
+              1190,
+              1422,
+              1356,
+              4190,
+              351.5
+            ],
+            [
+              "4",
+              3700,
+              3700,
+              3700,
+              3700,
+              3700,
+              203.25
+            ],
+            [
+              "Norte",
+              1235,
+              1300,
+              1155,
+              1710,
+              3600,
+              348
+            ],
+            [
+              "Sur",
+              2100,
+              2100,
+              1750,
+              2100,
+              3300,
+              320
+            ],
+            [
+              "Ladrilleros",
+              1900,
+              1900,
+              1900,
+              1990,
+              1600,
+              314
+            ],
+            [
+              "Interior",
+              1300,
+              1300,
+              1800,
+              1500,
+              4500,
+              315
+            ],
+            [
+              "Movimientos Sociales",
+              1300,
+              1300,
+              1800,
+              1500,
+              4500,
+              315
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "evolucion-precio",
+      "label": "Evolución precio",
+      "charts": [
+        {
+          "id": "frutas-verduras-chart-2",
+          "titulo": "Evolución precios Zona 4",
+          "series": [
+            {
+              "name": "Zanahoria kg 1200",
+              "dataKey": "s0"
+            },
+            {
+              "name": "Zapallo kg 1200",
+              "dataKey": "s1"
+            },
+            {
+              "name": "Papa kg 1200",
+              "dataKey": "s2"
+            },
+            {
+              "name": "Acelga kg 1300",
+              "dataKey": "s3"
+            },
+            {
+              "name": "Frutas Un. 280",
+              "dataKey": "s4"
+            }
+          ],
+          "data": [
+            {
+              "x": "1300",
+              "s0": 1300,
+              "s1": 1300,
+              "s2": 1450,
+              "s3": 1500,
+              "s4": 295
+            },
+            {
+              "x": "1115",
+              "s0": 1181,
+              "s1": 1050,
+              "s2": 1530,
+              "s3": 2800,
+              "s4": 294
+            },
+            {
+              "x": "3700",
+              "s0": 3700,
+              "s1": 3700,
+              "s2": 3700,
+              "s3": 3700,
+              "s4": 203.25
+            },
+            {
+              "x": "3700",
+              "s0": 3700,
+              "s1": 3700,
+              "s2": 3700,
+              "s3": 3700,
+              "s4": 203.25
+            }
+          ],
+          "formatY": "number"
+        },
+        {
+          "id": "frutas-verduras-chart-3",
+          "titulo": "Evolución precios Zona Norte",
+          "series": [
+            {
+              "name": "Zanahoria kg 830",
+              "dataKey": "s0"
+            },
+            {
+              "name": "Zapallo kg 825",
+              "dataKey": "s1"
+            },
+            {
+              "name": "Papa kg 830",
+              "dataKey": "s2"
+            },
+            {
+              "name": "Acelga kg 825",
+              "dataKey": "s3"
+            },
+            {
+              "name": "Frutas Un. 325",
+              "dataKey": "s4"
+            }
+          ],
+          "data": [
+            {
+              "x": "1199",
+              "s0": 787,
+              "s1": 1390,
+              "s2": 707,
+              "s3": 2454.55,
+              "s4": 310.05
+            },
+            {
+              "x": "1200",
+              "s0": 1200,
+              "s1": 1700,
+              "s2": 1300,
+              "s3": 4500,
+              "s4": 283
+            },
+            {
+              "x": "1650",
+              "s0": 1650,
+              "s1": 1850,
+              "s2": 1600,
+              "s3": 1800,
+              "s4": 340
+            },
+            {
+              "x": "1235",
+              "s0": 1300,
+              "s1": 1155,
+              "s2": 1710,
+              "s3": 3600,
+              "s4": 348
+            }
+          ],
+          "formatY": "number"
+        },
+        {
+          "id": "frutas-verduras-chart-4",
+          "titulo": "Evolución precios Zona Sur",
+          "series": [
+            {
+              "name": "Zanahoria kg 3200",
+              "dataKey": "s0"
+            },
+            {
+              "name": "Zapallo kg 3200",
+              "dataKey": "s1"
+            },
+            {
+              "name": "Papa kg 3200",
+              "dataKey": "s2"
+            },
+            {
+              "name": "Acelga kg 3400",
+              "dataKey": "s3"
+            },
+            {
+              "name": "Frutas Un. 190",
+              "dataKey": "s4"
+            }
+          ],
+          "data": [
+            {
+              "x": "1115",
+              "s0": 1181,
+              "s1": 1050,
+              "s2": 1539,
+              "s3": 2880,
+              "s4": 309
+            },
+            {
+              "x": "3200",
+              "s0": 3200,
+              "s1": 3200,
+              "s2": 3200,
+              "s3": 3500,
+              "s4": 190
+            },
+            {
+              "x": "2100",
+              "s0": 2100,
+              "s1": 1750,
+              "s2": 2100,
+              "s3": 3300,
+              "s4": 320
+            },
+            {
+              "x": "2100",
+              "s0": 2100,
+              "s1": 1750,
+              "s2": 2100,
+              "s3": 3300,
+              "s4": 320
+            }
+          ],
+          "formatY": "number"
+        },
+        {
+          "id": "frutas-verduras-chart-5",
+          "titulo": "Evolución precios Zona Ladrilleros",
+          "series": [
+            {
+              "name": "Zanahoria kg 1000",
+              "dataKey": "s0"
+            },
+            {
+              "name": "Zapallo kg 1100",
+              "dataKey": "s1"
+            },
+            {
+              "name": "Papa kg 950",
+              "dataKey": "s2"
+            },
+            {
+              "name": "Acelga kg 4000",
+              "dataKey": "s3"
+            },
+            {
+              "name": "Frutas Un. 265",
+              "dataKey": "s4"
+            }
+          ],
+          "data": [
+            {
+              "x": "1620",
+              "s0": 1900,
+              "s1": 1370,
+              "s2": 1460,
+              "s3": 2390,
+              "s4": 269
+            },
+            {
+              "x": "1262",
+              "s0": 1150,
+              "s1": 1350,
+              "s2": 1310,
+              "s3": 1300,
+              "s4": 300
+            },
+            {
+              "x": "1900",
+              "s0": 1900,
+              "s1": 1900,
+              "s2": 1990,
+              "s3": 1600,
+              "s4": 314
+            },
+            {
+              "x": "1900",
+              "s0": 1900,
+              "s1": 1900,
+              "s2": 1990,
+              "s3": 1600,
+              "s4": 314
+            }
+          ],
+          "formatY": "number"
+        },
+        {
+          "id": "frutas-verduras-chart-6",
+          "titulo": "Evolución precios Zona Interior",
+          "series": [
+            {
+              "name": "Zanahoria kg 4350",
+              "dataKey": "s0"
+            },
+            {
+              "name": "Zapallo kg 4500",
+              "dataKey": "s1"
+            },
+            {
+              "name": "Papa kg 4050",
+              "dataKey": "s2"
+            },
+            {
+              "name": "Acelga kg 4000",
+              "dataKey": "s3"
+            },
+            {
+              "name": "Frutas Un. 21",
+              "dataKey": "s4"
+            }
+          ],
+          "data": [
+            {
+              "x": "4500",
+              "s0": 4500,
+              "s1": 4500,
+              "s2": 4000,
+              "s3": 4900,
+              "s4": 14
+            },
+            {
+              "x": "1080",
+              "s0": 2435.3,
+              "s1": 1550,
+              "s2": 1058.8,
+              "s3": 4950,
+              "s4": 251
+            },
+            {
+              "x": "1300",
+              "s0": 1300,
+              "s1": 1800,
+              "s2": 1500,
+              "s3": 4500,
+              "s4": 315
+            },
+            {
+              "x": "1300",
+              "s0": 1300,
+              "s1": 1800,
+              "s2": 1500,
+              "s3": 4500,
+              "s4": 315
+            }
+          ],
+          "formatY": "number"
+        },
+        {
+          "id": "frutas-verduras-chart-7",
+          "titulo": "Evolución precios Zona 1",
+          "series": [
+            {
+              "name": "Zanahoria kg 1181",
+              "dataKey": "s0"
+            },
+            {
+              "name": "Zapallo kg 1050",
+              "dataKey": "s1"
+            },
+            {
+              "name": "Papa kg 1539",
+              "dataKey": "s2"
+            },
+            {
+              "name": "Acelga kg 3420",
+              "dataKey": "s3"
+            },
+            {
+              "name": "Frutas Un. 275.5",
+              "dataKey": "s4"
+            }
+          ],
+          "data": [
+            {
+              "x": "1115",
+              "s0": 1181,
+              "s1": 1050,
+              "s2": 1539,
+              "s3": 3050,
+              "s4": 309
+            },
+            {
+              "x": "1600",
+              "s0": 1600,
+              "s1": 1600,
+              "s2": 1700,
+              "s3": 1400,
+              "s4": 290.45
+            },
+            {
+              "x": "7650",
+              "s0": 7900,
+              "s1": 7800,
+              "s2": 7800,
+              "s3": 7900,
+              "s4": 35
+            },
+            {
+              "x": "1440",
+              "s0": 1190,
+              "s1": 1422,
+              "s2": 1356,
+              "s3": 4190,
+              "s4": 351.5
+            }
+          ],
+          "formatY": "number"
+        },
+        {
+          "id": "frutas-verduras-chart-8",
+          "titulo": "Evolución precios Zona 2",
+          "series": [
+            {
+              "name": "Zanahoria kg 1181",
+              "dataKey": "s0"
+            },
+            {
+              "name": "Zapallo kg 1050",
+              "dataKey": "s1"
+            },
+            {
+              "name": "Papa kg 1539",
+              "dataKey": "s2"
+            },
+            {
+              "name": "Acelga kg 3420",
+              "dataKey": "s3"
+            },
+            {
+              "name": "Frutas Un. 275.5",
+              "dataKey": "s4"
+            }
+          ],
+          "data": [
+            {
+              "x": "1115",
+              "s0": 1181,
+              "s1": 1050,
+              "s2": 1539,
+              "s3": 3050,
+              "s4": 309
+            },
+            {
+              "x": "1600",
+              "s0": 1600,
+              "s1": 1600,
+              "s2": 1700,
+              "s3": 1400,
+              "s4": 290.45
+            },
+            {
+              "x": "7650",
+              "s0": 7900,
+              "s1": 7800,
+              "s2": 7800,
+              "s3": 7900,
+              "s4": 35
+            },
+            {
+              "x": "1440",
+              "s0": 1190,
+              "s1": 1422,
+              "s2": 1356,
+              "s3": 4190,
+              "s4": 351.5
+            }
+          ],
+          "formatY": "number"
+        },
+        {
+          "id": "frutas-verduras-chart-9",
+          "titulo": "Evolución precios Zona 3",
+          "series": [
+            {
+              "name": "Zanahoria kg 1181",
+              "dataKey": "s0"
+            },
+            {
+              "name": "Zapallo kg 1050",
+              "dataKey": "s1"
+            },
+            {
+              "name": "Papa kg 1539",
+              "dataKey": "s2"
+            },
+            {
+              "name": "Acelga kg 3420",
+              "dataKey": "s3"
+            },
+            {
+              "name": "Frutas Un. 275.5",
+              "dataKey": "s4"
+            }
+          ],
+          "data": [
+            {
+              "x": "1115",
+              "s0": 1181,
+              "s1": 1050,
+              "s2": 1539,
+              "s3": 3050,
+              "s4": 309
+            },
+            {
+              "x": "1600",
+              "s0": 1600,
+              "s1": 1600,
+              "s2": 1700,
+              "s3": 1400,
+              "s4": 290.45
+            },
+            {
+              "x": "7650",
+              "s0": 7900,
+              "s1": 7800,
+              "s2": 7800,
+              "s3": 7900,
+              "s4": 35
+            },
+            {
+              "x": "1440",
+              "s0": 1190,
+              "s1": 1422,
+              "s2": 1356,
+              "s3": 4190,
+              "s4": 351.5
+            }
+          ],
+          "formatY": "number"
+        },
+        {
+          "id": "frutas-verduras-chart-10",
+          "titulo": "Evolución precios Zona Movimientos sociales",
+          "series": [
+            {
+              "name": "Zanahoria kg 4350",
+              "dataKey": "s0"
+            },
+            {
+              "name": "Zapallo kg 4500",
+              "dataKey": "s1"
+            },
+            {
+              "name": "Papa kg 4050",
+              "dataKey": "s2"
+            },
+            {
+              "name": "Acelga kg 4000",
+              "dataKey": "s3"
+            },
+            {
+              "name": "Frutas Un. 21",
+              "dataKey": "s4"
+            }
+          ],
+          "data": [
+            {
+              "x": "4500",
+              "s0": 4500,
+              "s1": 4500,
+              "s2": 4000,
+              "s3": 4900,
+              "s4": 14
+            },
+            {
+              "x": "1080",
+              "s0": 2435.3,
+              "s1": 1550,
+              "s2": 1058.8,
+              "s3": 4950,
+              "s4": 251
+            },
+            {
+              "x": "1300",
+              "s0": 1300,
+              "s1": 1800,
+              "s2": 1500,
+              "s3": 4500,
+              "s4": 315
+            },
+            {
+              "x": "1300",
+              "s0": 1300,
+              "s1": 1800,
+              "s2": 1500,
+              "s3": 4500,
+              "s4": 315
+            }
+          ],
+          "formatY": "number"
+        }
+      ]
+    },
+    {
+      "id": "precio-zona",
+      "label": "Precio por zona",
+      "charts": [
+        {
+          "id": "frutas-verduras-chart-11",
+          "titulo": "Precios por zona Enero - Verduras",
+          "series": [
+            {
+              "name": "Zanahoria kg 1181",
+              "dataKey": "s0"
+            },
+            {
+              "name": "Zapallo kg 1050",
+              "dataKey": "s1"
+            },
+            {
+              "name": "Papa kg 1539",
+              "dataKey": "s2"
+            },
+            {
+              "name": "Acelga kg 3420",
+              "dataKey": "s3"
+            },
+            {
+              "name": "Frutas Un. 275.5",
+              "dataKey": "s4"
+            }
+          ],
+          "data": [
+            {
+              "x": "1200",
+              "s0": 1200,
+              "s1": 1200,
+              "s2": 1200,
+              "s3": 1300,
+              "s4": 280
+            },
+            {
+              "x": "845",
+              "s0": 830,
+              "s1": 825,
+              "s2": 830,
+              "s3": 825,
+              "s4": 325
+            },
+            {
+              "x": "3200",
+              "s0": 3200,
+              "s1": 3200,
+              "s2": 3200,
+              "s3": 3400,
+              "s4": 190
+            },
+            {
+              "x": "1000",
+              "s0": 1000,
+              "s1": 1100,
+              "s2": 950,
+              "s3": 4000,
+              "s4": 265
+            },
+            {
+              "x": "4500",
+              "s0": 4350,
+              "s1": 4500,
+              "s2": 4050,
+              "s3": 4000,
+              "s4": 21
+            }
+          ],
+          "formatY": "number"
+        },
+        {
+          "id": "frutas-verduras-chart-12",
+          "titulo": "Precios por zona Febrero - Verduras",
+          "series": [
+            {
+              "name": "Zanahoria kg 1181",
+              "dataKey": "s0"
+            },
+            {
+              "name": "Zapallo kg 1050",
+              "dataKey": "s1"
+            },
+            {
+              "name": "Papa kg 1539",
+              "dataKey": "s2"
+            },
+            {
+              "name": "Acelga kg 3050",
+              "dataKey": "s3"
+            },
+            {
+              "name": "Frutas Un. 309",
+              "dataKey": "s4"
+            }
+          ],
+          "data": [
+            {
+              "x": "1300",
+              "s0": 1300,
+              "s1": 1300,
+              "s2": 1450,
+              "s3": 1500,
+              "s4": 295
+            },
+            {
+              "x": "1199",
+              "s0": 787,
+              "s1": 1390,
+              "s2": 707,
+              "s3": 2454.55,
+              "s4": 310.05
+            },
+            {
+              "x": "1115",
+              "s0": 1181,
+              "s1": 1050,
+              "s2": 1539,
+              "s3": 2880,
+              "s4": 309
+            },
+            {
+              "x": "1620",
+              "s0": 1900,
+              "s1": 1370,
+              "s2": 1460,
+              "s3": 2390,
+              "s4": 269
+            },
+            {
+              "x": "4500",
+              "s0": 4500,
+              "s1": 4500,
+              "s2": 4000,
+              "s3": 4900,
+              "s4": 14
+            }
+          ],
+          "formatY": "number"
+        },
+        {
+          "id": "frutas-verduras-chart-13",
+          "titulo": "Precios por zona Marzo - Verduras",
+          "series": [
+            {
+              "name": "Zanahoria kg 1600",
+              "dataKey": "s0"
+            },
+            {
+              "name": "Zapallo kg 1600",
+              "dataKey": "s1"
+            },
+            {
+              "name": "Papa kg 1700",
+              "dataKey": "s2"
+            },
+            {
+              "name": "Acelga kg 1400",
+              "dataKey": "s3"
+            },
+            {
+              "name": "Frutas Un. 290.45",
+              "dataKey": "s4"
+            }
+          ],
+          "data": [
+            {
+              "x": "1115",
+              "s0": 1181,
+              "s1": 1050,
+              "s2": 1530,
+              "s3": 2800,
+              "s4": 294
+            },
+            {
+              "x": "1200",
+              "s0": 1200,
+              "s1": 1700,
+              "s2": 1300,
+              "s3": 4500,
+              "s4": 283
+            },
+            {
+              "x": "3200",
+              "s0": 3200,
+              "s1": 3200,
+              "s2": 3200,
+              "s3": 3500,
+              "s4": 190
+            },
+            {
+              "x": "1262",
+              "s0": 1150,
+              "s1": 1350,
+              "s2": 1310,
+              "s3": 1300,
+              "s4": 300
+            },
+            {
+              "x": "1080",
+              "s0": 2435.3,
+              "s1": 1550,
+              "s2": 1058.8,
+              "s3": 4950,
+              "s4": 251
+            }
+          ],
+          "formatY": "number"
+        },
+        {
+          "id": "frutas-verduras-chart-14",
+          "titulo": "Precios por zona Abril - Verduras",
+          "series": [
+            {
+              "name": "Zanahoria kg 7900",
+              "dataKey": "s0"
+            },
+            {
+              "name": "Zapallo kg 7800",
+              "dataKey": "s1"
+            },
+            {
+              "name": "Papa kg 7800",
+              "dataKey": "s2"
+            },
+            {
+              "name": "Acelga kg 7900",
+              "dataKey": "s3"
+            },
+            {
+              "name": "Frutas Un. 35",
+              "dataKey": "s4"
+            }
+          ],
+          "data": [
+            {
+              "x": "3700",
+              "s0": 3700,
+              "s1": 3700,
+              "s2": 3700,
+              "s3": 3700,
+              "s4": 203.25
+            },
+            {
+              "x": "1650",
+              "s0": 1650,
+              "s1": 1850,
+              "s2": 1600,
+              "s3": 1800,
+              "s4": 340
+            },
+            {
+              "x": "2100",
+              "s0": 2100,
+              "s1": 1750,
+              "s2": 2100,
+              "s3": 3300,
+              "s4": 320
+            },
+            {
+              "x": "1900",
+              "s0": 1900,
+              "s1": 1900,
+              "s2": 1990,
+              "s3": 1600,
+              "s4": 314
+            },
+            {
+              "x": "1300",
+              "s0": 1300,
+              "s1": 1800,
+              "s2": 1500,
+              "s3": 4500,
+              "s4": 315
+            }
+          ],
+          "formatY": "number"
+        },
+        {
+          "id": "frutas-verduras-chart-15",
+          "titulo": "Precios por zona Mayo - Verduras",
+          "series": [
+            {
+              "name": "Zanahoria kg 1190",
+              "dataKey": "s0"
+            },
+            {
+              "name": "Zapallo kg 1422",
+              "dataKey": "s1"
+            },
+            {
+              "name": "Papa kg 1356",
+              "dataKey": "s2"
+            },
+            {
+              "name": "Acelga kg 4190",
+              "dataKey": "s3"
+            },
+            {
+              "name": "Frutas Un. 351.5",
+              "dataKey": "s4"
+            }
+          ],
+          "data": [
+            {
+              "x": "3700",
+              "s0": 3700,
+              "s1": 3700,
+              "s2": 3700,
+              "s3": 3700,
+              "s4": 203.25
+            },
+            {
+              "x": "1235",
+              "s0": 1300,
+              "s1": 1155,
+              "s2": 1710,
+              "s3": 3600,
+              "s4": 348
+            },
+            {
+              "x": "2100",
+              "s0": 2100,
+              "s1": 1750,
+              "s2": 2100,
+              "s3": 3300,
+              "s4": 320
+            },
+            {
+              "x": "1900",
+              "s0": 1900,
+              "s1": 1900,
+              "s2": 1990,
+              "s3": 1600,
+              "s4": 314
+            },
+            {
+              "x": "1300",
+              "s0": 1300,
+              "s1": 1800,
+              "s2": 1500,
+              "s3": 4500,
+              "s4": 315
+            }
+          ],
+          "formatY": "number"
+        }
+      ]
+    }
+  ]
+}

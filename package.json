@@ -4,9 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:db": "docker compose up -d db postgres",
+    "dev:docker": "docker compose --profile dev up app-dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "extract:graficos": "tsx scripts/extract_graficos_xlsx.ts"
   },
   "dependencies": {
     "@types/pg": "^8.20.0",
@@ -18,6 +21,7 @@
     "pg": "^8.21.0",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "recharts": "^3.9.0",
     "ssh2": "^1.17.0",
     "tailwind-merge": "^3.5.0",
     "xlsx": "^0.18.5"

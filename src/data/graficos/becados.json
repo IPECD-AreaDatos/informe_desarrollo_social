@@ -1,0 +1,80 @@
+{
+  "id": "becados",
+  "titulo": "Evolución gasto en becados",
+  "charts": [
+    {
+      "id": "becados-capital",
+      "titulo": "Evolución del gasto en becados de Capital",
+      "series": [
+        {
+          "name": "Evolución del gasto en becados de Capital",
+          "dataKey": "s0"
+        }
+      ],
+      "data": [
+        {
+          "x": "Enero",
+          "s0": 130546084.9
+        },
+        {
+          "x": "Febrero",
+          "s0": 130546084.9
+        },
+        {
+          "x": "Marzo",
+          "s0": 130546084.9
+        },
+        {
+          "x": "Abril",
+          "s0": 130546084.9
+        },
+        {
+          "x": "Mayo",
+          "s0": 130546084.9
+        },
+        {
+          "x": "Junio",
+          "s0": 130546084.9
+        }
+      ],
+      "formatY": "ars"
+    },
+    {
+      "id": "becados-interior",
+      "titulo": "Evolución de gasto en becados del interior",
+      "series": [
+        {
+          "name": "Evolución de gasto en becados del interior",
+          "dataKey": "s0"
+        }
+      ],
+      "data": [
+        {
+          "x": "Enero",
+          "s0": 5361570.590000001
+        },
+        {
+          "x": "Febrero",
+          "s0": 5361570.590000001
+        },
+        {
+          "x": "Marzo",
+          "s0": 5361570.590000001
+        },
+        {
+          "x": "Abril",
+          "s0": 5361570.590000001
+        },
+        {
+          "x": "Mayo",
+          "s0": 5361570.590000001
+        },
+        {
+          "x": "Junio",
+          "s0": 5361570.590000001
+        }
+      ],
+      "formatY": "ars"
+    }
+  ]
+}

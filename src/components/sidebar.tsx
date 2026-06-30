@@ -7,6 +7,7 @@ import {
     BookOpen,
     HeartPulse,
     UtensilsCrossed,
+    BarChart3,
     Menu,
     X,
     PanelLeftClose,
@@ -21,7 +22,15 @@ import { createContext, useContext, useState } from "react";
 
 const menuItems = [
     { name: "Resumen Central", icon: LayoutDashboard, href: "/" },
-    { name: "Seguridad alimentaria", icon: UtensilsCrossed, href: "/comedores" },
+    {
+        name: "Seguridad alimentaria",
+        icon: UtensilsCrossed,
+        href: "/comedores",
+        subMenu: [
+            { name: "Dependencia y recursos", icon: UtensilsCrossed, href: "/comedores" },
+            { name: "Gráficos", icon: BarChart3, href: "/comedores/graficos" },
+        ],
+    },
     {
         name: "Perfil Vulnerabilidad",
         icon: Users,
@@ -95,9 +104,17 @@ export function Sidebar() {
 
             <nav className={clsx("flex-1 space-y-2", compact ? "px-2 py-4" : "px-4 py-4")}>
                 {menuItems.map((item) => {
-                    const isActive = pathname === item.href;
                     const hasSubMenu = (item as any).subMenu && (item as any).subMenu.length > 0;
-                    const isAnySubActive = hasSubMenu && (item as any).subMenu.some((sub: any) => pathname === sub.href);
+                    const isAnySubActive =
+                        hasSubMenu &&
+                        (item as any).subMenu.some(
+                            (sub: { href: string }) =>
+                                pathname === sub.href || pathname.startsWith(`${sub.href}/`)
+                        );
+                    const isActive =
+                        pathname === item.href ||
+                        (item.href !== "/" && pathname.startsWith(`${item.href}/`)) ||
+                        isAnySubActive;
 
                     return (
                         <div key={item.href} className="space-y-1">
@@ -129,7 +146,9 @@ export function Sidebar() {
                                             onClick={onNavigate}
                                     className={clsx(
                                         "flex items-center gap-3 px-4 py-2 rounded-xl text-xs transition-all duration-200",
-                                        pathname === sub.href
+                                        (sub.href === "/comedores"
+                                            ? pathname === sub.href
+                                            : pathname === sub.href || pathname.startsWith(`${sub.href}/`))
                                             ? "text-[var(--primary)] font-bold bg-white/10"
                                             : "text-slate-400 hover:text-white hover:bg-white/5"
                                     )}

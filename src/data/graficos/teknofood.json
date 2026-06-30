@@ -1,0 +1,43 @@
+{
+  "id": "teknofood",
+  "titulo": "Evolución de Gasto en Teknofood",
+  "charts": [
+    {
+      "id": "teknofood-1",
+      "titulo": "Evolución de gasto teknofood",
+      "series": [
+        {
+          "name": "Evolución de gasto teknofood",
+          "dataKey": "s0"
+        }
+      ],
+      "data": [
+        {
+          "x": "Enero",
+          "s0": 100734400
+        },
+        {
+          "x": "Febrero",
+          "s0": 100734400
+        },
+        {
+          "x": "Marzo",
+          "s0": 100734400
+        },
+        {
+          "x": "Abril",
+          "s0": 100734400
+        },
+        {
+          "x": "Mayo",
+          "s0": 100734400
+        },
+        {
+          "x": "Junio",
+          "s0": 100734400
+        }
+      ],
+      "formatY": "ars"
+    }
+  ]
+}
