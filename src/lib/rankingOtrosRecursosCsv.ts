@@ -178,19 +178,21 @@ export type OtrosRecursosPadronRow = {
   limpiezaUnidades: number;
 };
 
-/** Busca gas + limpieza + fumigación del padrón por `numero_oficial` o `comedor_id`. */
+/** Busca gas + limpieza + fumigación del padrón por `comedor_id` (prioritario) o `numero_oficial`. */
 export function lookupOtrosRecursosForComedor(
   periodo: string,
   comedorId: string | null | undefined,
-  numeroOficial: string | null | undefined
+  numeroOficial: string | null | undefined,
+  opts?: { strictId?: boolean }
 ): OtrosRecursosPadronRow | null {
   const rows = loadRankingOtrosRecursosForPeriodo(periodo);
   if (!rows?.length) return null;
   const dir = docsDirForPeriodo(periodo);
   const gasMap = dir ? loadGasCantidadesById(dir) : new Map();
   const limpMap = dir ? loadLimpiezaUnidadesById(dir) : new Map();
-  const aliasMap = dir ? getPadronAliasMapForDir(dir) : new Map();
-  for (const key of [numeroOficial, comedorId]) {
+  const aliasMap = opts?.strictId || !dir ? undefined : getPadronAliasMapForDir(dir);
+  const keys = opts?.strictId ? [comedorId] : [comedorId, numeroOficial];
+  for (const key of keys) {
     const k = String(key ?? '').trim();
     if (!k) continue;
     const lookupKeys = new Set(expandPadronLookupKeys(k, aliasMap));

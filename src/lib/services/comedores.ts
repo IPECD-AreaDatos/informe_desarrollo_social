@@ -22,11 +22,13 @@ import {
   loadRankingRacionesForPeriodo,
   expandPadronLookupKeys,
   getPadronAliasMapForPeriodo,
+  padronIdAliases,
   lookupFrescosCsvForComedor,
   lookupTeknofoodPadronForComedor,
   totalRacionesTeknofoodForPeriodo,
 } from '../rankingRacionesCsv';
 import { loadCapitalHoja1PorTipo, lookupCapitalHoja1TipoPorId } from '../capitalHoja1Tipos';
+import { lookupDependenciaCatalogCsv } from '../dependenciaNombresCsv';
 import { PERIODOS_UI_HASTA_JUNIO_2026, periodoSlugParaDatos } from '../periodosDemo';
 /** Orden cronológico para slugs tipo `marzo-2026` (no lexicográfico). */
 const MESES_SLUG: Record<string, number> = {
@@ -338,6 +340,8 @@ export interface ComedoresRankingRow {
   nombre_persona?: string | null;
   localidad?: string | null;
   funcion?: string | null;
+  /** Fila presente en catálogo CSV (Teknofood / Interior Hoja 1) aunque montos sean 0. */
+  en_catalogo?: boolean;
 }
 
 async function queryBecadosCapitalResumen(connection: Connection): Promise<{ monto: number; cantidad: number }> {
@@ -926,33 +930,30 @@ async function getSummaryByPeriodo(periodo: string): Promise<ComedoresSummary> {
 function getComedorRowPorPadronId(
   padronId: string,
   byComedorId: Map<string, Record<string, unknown>>,
-  byNumeroOficial: Map<string, Record<string, unknown>>,
-  aliasMap?: Map<string, Set<string>>
+  byNumeroOficial: Map<string, Record<string, unknown>>
 ): Record<string, unknown> | undefined {
-  for (const key of expandPadronLookupKeys(padronId, aliasMap)) {
+  for (const key of padronIdAliases(padronId)) {
     const hit = byComedorId.get(key) ?? byNumeroOficial.get(key);
     if (hit) return hit;
   }
-  return undefined;
+  const canon = canonicalPadronId(padronId);
+  return byComedorId.get(canon) ?? byNumeroOficial.get(canon);
 }
 
 function indexComedorEnMapas(
   c: Record<string, unknown>,
   byComedorId: Map<string, Record<string, unknown>>,
-  byNumeroOficial: Map<string, Record<string, unknown>>,
-  aliasMap?: Map<string, Set<string>>
+  byNumeroOficial: Map<string, Record<string, unknown>>
 ): void {
-  const id = rowComedorId(c.comedor_id);
+  const id = canonicalPadronId(rowComedorId(c.comedor_id));
   if (id) {
-    for (const key of expandPadronLookupKeys(id, aliasMap)) {
-      byComedorId.set(key, c);
-    }
+    byComedorId.set(id, c);
+    for (const a of padronIdAliases(id)) byComedorId.set(a, c);
   }
-  const num = rowComedorId(c.numero_oficial);
+  const num = canonicalPadronId(rowComedorId(c.numero_oficial));
   if (num) {
-    for (const key of expandPadronLookupKeys(num, aliasMap)) {
-      byNumeroOficial.set(key, c);
-    }
+    byNumeroOficial.set(num, c);
+    for (const a of padronIdAliases(num)) byNumeroOficial.set(a, c);
   }
 }
 
@@ -970,7 +971,6 @@ async function getRankingsRacionesConsolidadoFromCsv(params: {
   const csvRows = loadRankingRacionesForPeriodo(params.periodo);
   if (!csvRows?.length) return null;
 
-  const aliasMap = getPadronAliasMapForPeriodo(params.periodo);
   const { connection, close } = await getComedoresConnection();
   const limitVal = Math.min(Math.max(0, params.limit ?? 50), 2000);
   const offsetVal = Math.max(0, params.offset ?? 0);
@@ -985,29 +985,38 @@ async function getRankingsRacionesConsolidadoFromCsv(params: {
     const byComedorId = new Map<string, Record<string, unknown>>();
     const byNumeroOficial = new Map<string, Record<string, unknown>>();
     for (const c of comedores as Record<string, unknown>[]) {
-      indexComedorEnMapas(c, byComedorId, byNumeroOficial, aliasMap);
+      indexComedorEnMapas(c, byComedorId, byNumeroOficial);
     }
 
     const merged: ComedoresRankingRow[] = [];
     for (const row of csvRows) {
       const pid = row.padronId;
-      const c = getComedorRowPorPadronId(pid, byComedorId, byNumeroOficial, aliasMap);
+      const c = getComedorRowPorPadronId(pid, byComedorId, byNumeroOficial);
+      const cat = lookupDependenciaCatalogCsv(params.periodo, pid);
       const ambito = (
-        c?.ambito ? String(c.ambito) : inferAmbitoDesdeZonaCsv(row.zonaCsv)
+        c?.ambito
+          ? String(c.ambito)
+          : inferAmbitoDesdeZonaCsv(cat?.zona ?? row.zonaCsv)
       ) as Ambito;
       if (params.ambito && ambito !== params.ambito) continue;
 
       merged.push({
-        comedor_id: c ? rowComedorId(c.comedor_id) : pid,
-        nombre: String(c?.nombre ?? row.nombreDependencia ?? 'Sin nombre').trim() || 'Sin nombre',
-        zona_nombre: c?.zona_nombre != null ? String(c.zona_nombre) : null,
+        comedor_id: pid,
+        nombre:
+          String(cat?.nombre ?? row.nombreDependencia ?? c?.nombre ?? 'Sin nombre').trim() ||
+          'Sin nombre',
+        zona_nombre:
+          cat?.zona ?? (c?.zona_nombre != null ? String(c.zona_nombre) : null),
         ambito,
-        responsable_nombre: c?.responsable_nombre != null ? String(c.responsable_nombre) : null,
+        responsable_nombre:
+          cat?.responsable ??
+          (c?.responsable_nombre != null ? String(c.responsable_nombre) : null),
         valor: row.montoTotalMensual,
         beneficiarios: 0,
         cantidad_raciones: row.cantidadRaciones,
         monto_teknofood: row.montoTeknofood,
         unidad: '$',
+        en_catalogo: Boolean(cat),
       });
     }
 
@@ -1027,7 +1036,6 @@ async function getRankingsOtrosRecursosFromCsv(params: {
   const csvRows = loadRankingOtrosRecursosForPeriodo(params.periodo);
   if (!csvRows?.length) return null;
 
-  const aliasMap = getPadronAliasMapForPeriodo(params.periodo);
   const { connection, close } = await getComedoresConnection();
   const limitVal = Math.min(Math.max(0, params.limit ?? 50), 2000);
   const offsetVal = Math.max(0, params.offset ?? 0);
@@ -1042,28 +1050,37 @@ async function getRankingsOtrosRecursosFromCsv(params: {
     const byComedorId = new Map<string, Record<string, unknown>>();
     const byNumeroOficial = new Map<string, Record<string, unknown>>();
     for (const c of comedores as Record<string, unknown>[]) {
-      indexComedorEnMapas(c, byComedorId, byNumeroOficial, aliasMap);
+      indexComedorEnMapas(c, byComedorId, byNumeroOficial);
     }
 
     const merged: ComedoresRankingRow[] = [];
     for (const row of csvRows) {
       const pid = row.padronId;
-      const c = getComedorRowPorPadronId(pid, byComedorId, byNumeroOficial, aliasMap);
+      const c = getComedorRowPorPadronId(pid, byComedorId, byNumeroOficial);
+      const cat = lookupDependenciaCatalogCsv(params.periodo, pid);
       const ambito = (
-        c?.ambito ? String(c.ambito) : inferAmbitoDesdeZonaCsv(row.zonaCsv)
+        c?.ambito
+          ? String(c.ambito)
+          : inferAmbitoDesdeZonaCsv(cat?.zona ?? row.zonaCsv)
       ) as Ambito;
       if (params.ambito && ambito !== params.ambito) continue;
 
       merged.push({
-        comedor_id: c ? rowComedorId(c.comedor_id) : pid,
-        nombre: String(c?.nombre ?? row.nombreDependencia ?? 'Sin nombre').trim() || 'Sin nombre',
-        zona_nombre: c?.zona_nombre != null ? String(c.zona_nombre) : null,
+        comedor_id: pid,
+        nombre:
+          String(cat?.nombre ?? row.nombreDependencia ?? c?.nombre ?? 'Sin nombre').trim() ||
+          'Sin nombre',
+        zona_nombre:
+          cat?.zona ?? (c?.zona_nombre != null ? String(c.zona_nombre) : null),
         ambito,
-        responsable_nombre: c?.responsable_nombre != null ? String(c.responsable_nombre) : null,
+        responsable_nombre:
+          cat?.responsable ??
+          (c?.responsable_nombre != null ? String(c.responsable_nombre) : null),
         valor: row.montoTotalMensual,
         beneficiarios: row.cantidadBeneficiarios,
         cantidad_raciones: row.cantidadBeneficiarios,
         unidad: '$',
+        en_catalogo: Boolean(cat),
       });
     }
 
@@ -1083,7 +1100,6 @@ async function getRankingsPromedioBeneficiarioFromCsv(params: {
   const csvRows = loadRankingPromedioBeneficiarioForPeriodo(params.periodo);
   if (!csvRows?.length) return null;
 
-  const aliasMap = getPadronAliasMapForPeriodo(params.periodo);
   const { connection, close } = await getComedoresConnection();
   const limitVal = Math.min(Math.max(0, params.limit ?? 50), 2000);
   const offsetVal = Math.max(0, params.offset ?? 0);
@@ -1098,13 +1114,13 @@ async function getRankingsPromedioBeneficiarioFromCsv(params: {
     const byComedorId = new Map<string, Record<string, unknown>>();
     const byNumeroOficial = new Map<string, Record<string, unknown>>();
     for (const c of comedores as Record<string, unknown>[]) {
-      indexComedorEnMapas(c, byComedorId, byNumeroOficial, aliasMap);
+      indexComedorEnMapas(c, byComedorId, byNumeroOficial);
     }
 
     const merged: ComedoresRankingRow[] = [];
     for (const row of csvRows) {
       const pid = row.padronId;
-      const c = getComedorRowPorPadronId(pid, byComedorId, byNumeroOficial, aliasMap);
+      const c = getComedorRowPorPadronId(pid, byComedorId, byNumeroOficial);
       const ambito = (
         c?.ambito ? String(c.ambito) : inferAmbitoDesdeZonaCsv(row.zonaCsv)
       ) as Ambito;
@@ -1112,17 +1128,24 @@ async function getRankingsPromedioBeneficiarioFromCsv(params: {
 
       const gastoTotal = row.montoTotalMensual;
       const benef = row.cantidadBeneficiarios;
+      const cat = lookupDependenciaCatalogCsv(params.periodo, pid);
       merged.push({
-        comedor_id: c ? rowComedorId(c.comedor_id) : pid,
-        nombre: String(c?.nombre ?? row.nombreDependencia ?? 'Sin nombre').trim() || 'Sin nombre',
-        zona_nombre: c?.zona_nombre != null ? String(c.zona_nombre) : null,
+        comedor_id: pid,
+        nombre:
+          String(cat?.nombre ?? row.nombreDependencia ?? c?.nombre ?? 'Sin nombre').trim() ||
+          'Sin nombre',
+        zona_nombre:
+          cat?.zona ?? (c?.zona_nombre != null ? String(c.zona_nombre) : null),
         ambito,
-        responsable_nombre: c?.responsable_nombre != null ? String(c.responsable_nombre) : null,
+        responsable_nombre:
+          cat?.responsable ??
+          (c?.responsable_nombre != null ? String(c.responsable_nombre) : null),
         valor: gastoTotal,
         gasto_total_mensual: gastoTotal,
         beneficiarios: benef,
         cantidad_raciones: benef,
         unidad: '$/benef.',
+        en_catalogo: Boolean(cat),
       });
     }
 
@@ -1828,6 +1851,7 @@ async function getComedorDetail(comedorId: string, periodo: string): Promise<Com
     const pDet = periodoSlugParaDatos(String(periodo ?? '').trim());
     await connection.execute(`SET @cp = CONVERT(? USING utf8mb4) COLLATE utf8mb4_unicode_ci`, [pDet]);
     const pb = [pDet, pDet] as const;
+    const pid = rowComedorId(comedorId);
     const [comedor]: any = await connection.execute(
       `SELECT c.comedor_id, c.numero_oficial, c.nombre, c.domicilio, c.responsable_nombre, c.telefono,
               c.link_google_maps, c.coordenadas_lat, c.coordenadas_lng,
@@ -1838,11 +1862,13 @@ async function getComedorDetail(comedorId: string, periodo: string): Promise<Com
        LEFT JOIN TIPO_COMEDOR t ON c.tipo_id = t.tipo_id
        LEFT JOIN SUBTIPO_COMEDOR s ON c.subtipo_id = s.subtipo_id
        LEFT JOIN ORGANISMO o ON c.organismo_id = o.organismo_id
-       WHERE c.comedor_id = ?`,
-      [comedorId]
+       WHERE TRIM(CAST(c.comedor_id AS CHAR)) = ?
+          OR TRIM(COALESCE(c.numero_oficial, '')) = ?`,
+      [pid, pid]
     );
     if (!comedor?.length) return null;
     const c = comedor[0];
+    const dbComedorId = rowComedorId(c.comedor_id);
 
     let tipoNombre = c.tipo_nombre != null ? String(c.tipo_nombre).trim() : '';
     const tipoSinClasificar =
@@ -1850,7 +1876,7 @@ async function getComedorDetail(comedorId: string, periodo: string): Promise<Com
     if (String(c.ambito).toUpperCase() === 'CAPITAL' && tipoSinClasificar) {
       const fromCsv = lookupCapitalHoja1TipoPorId(
         pDet,
-        rowComedorId(c.comedor_id),
+        pid,
         c.numero_oficial
       );
       if (fromCsv) tipoNombre = fromCsv;
@@ -1859,17 +1885,17 @@ async function getComedorDetail(comedorId: string, periodo: string): Promise<Com
     const [ben]: any = await connection.execute(
       `SELECT COALESCE(SUM(cantidad_beneficiarios), 0) AS total FROM RACION WHERE comedor_id = ?
        AND (COALESCE(?, '') = '' OR TRIM(plan_ref) <=> TRIM(?))`,
-      [comedorId, ...pb]
+      [dbComedorId, ...pb]
     );
     const [gas]: any = await connection.execute(
       `SELECT COALESCE(SUM(garrafas_10kg), 0) AS g10, COALESCE(SUM(garrafas_15kg), 0) AS g15, COALESCE(SUM(garrafas_45kg), 0) AS g45
        FROM BENEFICIO_GAS WHERE comedor_id = ? AND (COALESCE(?, '') = '' OR TRIM(periodo) <=> TRIM(?))`,
-      [comedorId, ...pb]
+      [dbComedorId, ...pb]
     );
     const [limp]: any = await connection.execute(
       `SELECT lavandina_4lt, detergente_45lt, desengrasante_5lt, trapo_piso, trapo_rejilla, virulana, esponja, escobillon, escurridor
        FROM BENEFICIO_LIMPIEZA WHERE comedor_id = ? AND (COALESCE(?, '') = '' OR TRIM(periodo) <=> TRIM(?)) LIMIT 1`,
-      [comedorId, ...pb]
+      [dbComedorId, ...pb]
     );
     const [frescos]: any = await connection.execute(
       `SELECT COALESCE(SUM(cebolla_kg + zanahoria_kg + zapallo_kg + papa_kg + acelga_kg + carne_vacuna_kg + pollo_kg + cerdo_kg), 0) AS kg,
@@ -1878,7 +1904,7 @@ async function getComedorDetail(comedorId: string, periodo: string): Promise<Com
               COALESCE(SUM(frutas_unidades), 0) AS frutas_unidades, COALESCE(SUM(carne_vacuna_kg), 0) AS carne_vacuna_kg,
               COALESCE(SUM(pollo_kg), 0) AS pollo_kg, COALESCE(SUM(cerdo_kg), 0) AS cerdo_kg
        FROM BENEFICIO_FRESCOS WHERE comedor_id = ? AND (COALESCE(?, '') = '' OR TRIM(periodo) <=> TRIM(?))`,
-      [comedorId, ...pb]
+      [dbComedorId, ...pb]
     );
     let presupFrescosRows: any[] = [];
     try {
@@ -1888,7 +1914,7 @@ async function getComedorDetail(comedorId: string, periodo: string): Promise<Com
          WHERE comedor_id = ? AND rubro IN ('refrigerio_comida', 'carnes')
            AND (TRIM(COALESCE(@cp, '')) = '' OR CONVERT(TRIM(periodo) USING utf8mb4) COLLATE utf8mb4_unicode_ci <=> @cp)
          GROUP BY item_nombre`,
-        [comedorId]
+        [dbComedorId]
       );
       presupFrescosRows = pfr as any[];
     } catch (e: any) {
@@ -1902,7 +1928,7 @@ async function getComedorDetail(comedorId: string, periodo: string): Promise<Com
          WHERE comedor_id = ?
            AND (TRIM(COALESCE(@cp, '')) = '' OR CONVERT(TRIM(periodo) USING utf8mb4) COLLATE utf8mb4_unicode_ci <=> @cp)
          GROUP BY rubro, subrubro, item_nombre`,
-        [comedorId]
+        [dbComedorId]
       );
       presupItemsAll = pi as any[];
     } catch (e: any) {
@@ -1910,7 +1936,7 @@ async function getComedorDetail(comedorId: string, periodo: string): Promise<Com
     }
     const [fum]: any = await connection.execute(
       `SELECT COUNT(*) AS n FROM BENEFICIO_FUMIGACION WHERE comedor_id = ? AND (COALESCE(?, '') = '' OR TRIM(periodo) <=> TRIM(?))`,
-      [comedorId, ...pb]
+      [dbComedorId, ...pb]
     );
     let gastoComp: any[] = [];
     try {
@@ -1924,7 +1950,7 @@ async function getComedorDetail(comedorId: string, periodo: string): Promise<Com
          FROM PRESUPUESTO_DEPENDENCIA
          WHERE comedor_id = ?
            AND (TRIM(COALESCE(@cp, '')) = '' OR CONVERT(TRIM(periodo) USING utf8mb4) COLLATE utf8mb4_unicode_ci <=> @cp)`,
-        [comedorId]
+        [dbComedorId]
       );
       gastoComp = gc as any[];
     } catch (error: any) {
@@ -1982,7 +2008,7 @@ async function getComedorDetail(comedorId: string, periodo: string): Promise<Com
            AND (TRIM(COALESCE(@cp, '')) = '' OR CONVERT(TRIM(periodo) USING utf8mb4) COLLATE utf8mb4_unicode_ci <=> @cp)
          GROUP BY rubro, subrubro
          ORDER BY rubro, subrubro`,
-        [comedorId]
+        [dbComedorId]
       );
       presupuestoDesglose = (pd as any[]).map((r: any) => ({
         rubro: String(r.rubro ?? ''),
@@ -1996,27 +2022,15 @@ async function getComedorDetail(comedorId: string, periodo: string): Promise<Com
     }
 
     const csvTekno = pDet
-      ? lookupTeknofoodPadronForComedor(
-          pDet,
-          rowComedorId(c.comedor_id),
-          rowComedorId(c.numero_oficial)
-        )
+      ? lookupTeknofoodPadronForComedor(pDet, pid, rowComedorId(c.numero_oficial), { strictId: true })
       : null;
 
     const csvOtros = pDet
-      ? lookupOtrosRecursosForComedor(
-          pDet,
-          rowComedorId(c.comedor_id),
-          rowComedorId(c.numero_oficial)
-        )
+      ? lookupOtrosRecursosForComedor(pDet, pid, rowComedorId(c.numero_oficial), { strictId: true })
       : null;
 
     const csvFrescos = pDet
-      ? lookupFrescosCsvForComedor(
-          pDet,
-          rowComedorId(c.comedor_id),
-          rowComedorId(c.numero_oficial)
-        )
+      ? lookupFrescosCsvForComedor(pDet, pid, rowComedorId(c.numero_oficial), { strictId: true })
       : null;
 
     if (csvTekno) {
@@ -2224,19 +2238,21 @@ async function getComedorDetail(comedorId: string, periodo: string): Promise<Com
     const gastoTotalComedor =
       montoTeknoDetalle + becados + refrigerio_comida + carnesMonto + otros_recursos;
 
+    const cat = lookupDependenciaCatalogCsv(pDet, pid);
+
     return {
-      comedor_id: rowComedorId(c.comedor_id),
-      numero_oficial: c.numero_oficial,
-      nombre: c.nombre,
-      domicilio: c.domicilio,
-      zona_nombre: c.zona_nombre,
+      comedor_id: pid,
+      numero_oficial: rowComedorId(c.numero_oficial) || pid,
+      nombre: cat?.nombre ?? c.nombre,
+      domicilio: cat?.domicilio ?? c.domicilio,
+      zona_nombre: cat?.zona ?? c.zona_nombre,
       ambito: c.ambito,
       departamento: c.departamento,
       localidad: c.localidad,
       tipo_nombre: tipoNombre || c.tipo_nombre,
       subtipo_nombre: c.subtipo_nombre,
-      organismo_nombre: c.organismo_nombre,
-      responsable_nombre: c.responsable_nombre,
+      organismo_nombre: cat?.tipoReceptor ?? c.organismo_nombre,
+      responsable_nombre: cat?.responsable ?? c.responsable_nombre,
       telefono: c.telefono,
       link_google_maps: c.link_google_maps || null,
       coordenadas_lat: c.coordenadas_lat != null ? Number(c.coordenadas_lat) : null,

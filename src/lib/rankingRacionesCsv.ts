@@ -1,5 +1,10 @@
 import fs from 'fs';
 import path from 'path';
+import {
+  loadDependenciaCatalogForDir,
+  lookupDependenciaCatalogFromMap,
+  lookupDependenciaNombreFromMap,
+} from './dependenciaNombresCsv';
 import { cantidadSemanalAMensual } from './presupuestoCantidadesSemanalMensual';
 import { montoTeknofoodDesdeRaciones } from './teknofood';
 import { periodoSlugParaDatos } from './periodosDemo';
@@ -90,6 +95,7 @@ let cachedAliasMap = new Map<string, Set<string>>();
 
 /** Agrupa IDs de padrón que comparten el mismo nombre de dependencia en los CSV del mes. */
 export function buildPadronAliasMapForDir(dir: string): Map<string, Set<string>> {
+  const catalog = loadDependenciaCatalogForDir(dir);
   const nombreToIds = new Map<string, string[]>();
 
   const add = (rawId: string, nombre: string | null) => {
@@ -121,6 +127,12 @@ export function buildPadronAliasMapForDir(dir: string): Map<string, Set<string>>
 
   for (const ids of nombreToIds.values()) {
     if (ids.length < 2) {
+      for (const id of ids) ensureSet(id);
+      continue;
+    }
+    // ponytail: IDs distintos en catálogo (ej. Santa Rita 1 y 98) no se fusionan por nombre
+    const distinctCatalog = ids.filter((id) => catalog.has(canonicalPadronId(id)));
+    if (distinctCatalog.length >= 2) {
       for (const id of ids) ensureSet(id);
       continue;
     }
@@ -442,9 +454,12 @@ export function loadRankingRacionesFromCsvDir(dir: string): RankingRacionesCsvRo
   const verduras = loadVerdurasById(dir);
   const tekno = loadTeknofoodById(dir);
   const aliasMap = getPadronAliasMapForDir(dir);
+  const catalog = loadDependenciaCatalogForDir(dir);
+  const catalogNombres = new Map([...catalog.entries()].map(([id, row]) => [id, row.nombre]));
 
-  const representatives = new Set<string>();
+  const representatives = new Set<string>([...catalog.keys()]);
   for (const rawId of [...carne.keys(), ...verduras.keys(), ...tekno.keys()]) {
+    if (catalog.has(canonicalPadronId(rawId))) continue;
     const keys = expandPadronLookupKeys(rawId, aliasMap);
     representatives.add([...keys].sort()[0]);
   }
@@ -453,18 +468,29 @@ export function loadRankingRacionesFromCsvDir(dir: string): RankingRacionesCsvRo
 
   for (const padronId of representatives) {
     const lookupKeys = expandPadronLookupKeys(padronId, aliasMap);
-    const c = getMapByPadronId(carne, padronId, aliasMap);
-    const v = getMapByPadronId(verduras, padronId, aliasMap);
-    const t = getMapByPadronId(tekno, padronId, aliasMap);
+    const soloId = catalog.has(canonicalPadronId(padronId)) ? undefined : aliasMap;
+    const c = getMapByPadronId(carne, padronId, soloId);
+    const v = getMapByPadronId(verduras, padronId, soloId);
+    const t = getMapByPadronId(tekno, padronId, soloId);
     const montoCarne = c?.monto ?? 0;
     const montoVerdurasFrutas = v?.monto ?? 0;
     const montoTeknofood = t?.monto ?? 0;
     const cantidadRaciones = t?.raciones ?? 0;
     const montoTotalMensual = montoCarne + montoVerdurasFrutas + montoTeknofood;
-    if (montoTotalMensual <= 0 && cantidadRaciones <= 0) continue;
+    const enCatalogo = lookupDependenciaCatalogFromMap(padronId, catalog, aliasMap);
+    if (montoTotalMensual <= 0 && cantidadRaciones <= 0 && !enCatalogo) continue;
     rows.push({
       padronId,
-      nombreDependencia: t?.nombre ?? c?.nombre ?? v?.nombre ?? null,
+      nombreDependencia:
+        enCatalogo?.nombre ??
+        lookupDependenciaNombreFromMap(
+          padronId,
+          catalogNombres,
+          aliasMap,
+          c?.nombre,
+          v?.nombre,
+          t?.nombre
+        ),
       zonaCsv: t?.zona ?? null,
       montoCarne,
       montoVerdurasFrutas,
@@ -495,17 +521,19 @@ export type TeknofoodPadronRow = {
   zona: string | null;
 };
 
-/** Busca fila Teknofood del padrón por `numero_oficial` o `comedor_id`. */
+/** Busca fila Teknofood del padrón por `comedor_id` (prioritario) o `numero_oficial`. */
 export function lookupTeknofoodPadronForComedor(
   periodo: string,
   comedorId: string | null | undefined,
-  numeroOficial: string | null | undefined
+  numeroOficial: string | null | undefined,
+  opts?: { strictId?: boolean }
 ): TeknofoodPadronRow | null {
   const dir = docsDirForPeriodo(periodo);
   if (!dir) return null;
   const map = loadTeknofoodById(dir);
-  const aliasMap = getPadronAliasMapForDir(dir);
-  for (const key of [numeroOficial, comedorId]) {
+  const aliasMap = opts?.strictId ? undefined : getPadronAliasMapForDir(dir);
+  const keys = opts?.strictId ? [comedorId] : [comedorId, numeroOficial];
+  for (const key of keys) {
     const k = String(key ?? '').trim();
     if (!k) continue;
     const hit = getMapByPadronId(map, k, aliasMap);
@@ -526,7 +554,8 @@ export type FrescosPadronRow = {
 export function lookupFrescosCsvForComedor(
   periodo: string,
   comedorId: string | null | undefined,
-  numeroOficial: string | null | undefined
+  numeroOficial: string | null | undefined,
+  opts?: { strictId?: boolean }
 ): FrescosPadronRow | null {
   const dir = docsDirForPeriodo(periodo);
   if (!dir) return null;
@@ -538,8 +567,9 @@ export function lookupFrescosCsvForComedor(
   }
   const carne = loadCarneById(dir);
   const verduras = loadVerdurasById(dir);
-  const aliasMap = getPadronAliasMapForDir(dir);
-  for (const key of [numeroOficial, comedorId]) {
+  const aliasMap = opts?.strictId ? undefined : getPadronAliasMapForDir(dir);
+  const keys = opts?.strictId ? [comedorId] : [comedorId, numeroOficial];
+  for (const key of keys) {
     const k = String(key ?? '').trim();
     if (!k) continue;
     const c = getMapByPadronId(carne, k, aliasMap);

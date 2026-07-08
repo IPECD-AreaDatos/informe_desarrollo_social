@@ -101,6 +101,7 @@ interface RankingRow {
   gasto_total_mensual?: number;
   monto_teknofood?: number;
   cantidad_raciones?: number;
+  en_catalogo?: boolean;
   codigo_csv?: number;
   apellido?: string | null;
   nombre_persona?: string | null;
@@ -190,6 +191,7 @@ function RankingSortHeader({
 
 interface ComedorDetailData {
   comedor_id: string;
+  numero_oficial?: string | null;
   nombre: string;
   domicilio: string | null;
   zona_nombre: string | null;
@@ -371,6 +373,13 @@ const AMBITO_ETIQUETA: Record<string, string> = {
 function etiquetaAmbito(ambito: string | null | undefined): string {
   const k = String(ambito ?? "").toUpperCase();
   return AMBITO_ETIQUETA[k] ?? (ambito ? String(ambito) : "Sin ámbito");
+}
+
+/** ID de padrón (Teknofood / Interior Hoja 1); fallback al identificador de la fila. */
+function idPadronDependencia(d: ComedorDetailData): string {
+  const oficial = String(d.numero_oficial ?? "").trim();
+  if (oficial) return oficial;
+  return String(d.comedor_id ?? "").trim() || "—";
 }
 
 function lineaDireccionCompleta(d: ComedorDetailData): string {
@@ -800,7 +809,7 @@ function ComedoresPageContent() {
       })
       .filter((r) => {
         if (!normalizedSearch) return true;
-        const bag = `${r.nombre} ${r.responsable_nombre || ""} ${r.zona_nombre || ""} ${r.ambito}`.toLowerCase();
+        const bag = `${r.comedor_id ?? ""} ${r.nombre} ${r.responsable_nombre || ""} ${r.zona_nombre || ""} ${r.ambito}`.toLowerCase();
         return bag.includes(normalizedSearch);
       })
       .filter((r) => {
@@ -812,6 +821,7 @@ function ComedoresPageContent() {
         const cantidadPositiva = dividePorTekno ? racionesPositivo : benefPositivo;
         return (
           montoPositivo ||
+          r.en_catalogo ||
           (esProm && benefPositivo && (r.gastoTotalMensual > 0 || r.valorLinea > 0)) ||
           cantidadPositiva ||
           pctPositivo ||
@@ -885,8 +895,8 @@ function ComedoresPageContent() {
     return { min, max };
   }, [rankingTipo, rankings]);
 
-  const rankingTablaColumnas = rankingTipo === "becarios" ? 7 : 6;
-  const rankingTablaMinAncho = rankingTipo === "becarios" ? "min-w-[960px]" : "min-w-[860px]";
+  const rankingTablaColumnas = rankingTipo === "becarios" ? 7 : 7;
+  const rankingTablaMinAncho = rankingTipo === "becarios" ? "min-w-[960px]" : "min-w-[920px]";
   const presupuestoFvCantidades = useMemo(() => {
     const v = summary?.montos?.refrigerio_verduras_kg ?? 0;
     const f = summary?.montos?.refrigerio_frutas_unidades ?? 0;
@@ -1318,6 +1328,7 @@ function ComedoresPageContent() {
           <table className={clsx("w-full text-left text-xs sm:text-sm", rankingTablaMinAncho)}>
             <thead>
               <tr className="border-b border-slate-200 text-slate-700">
+                <th className="pb-3 pr-3 align-bottom font-bold normal-case w-14">ID</th>
                 <th className="pb-3 pr-3 align-bottom font-bold normal-case">
                   <RankingSortHeader
                     label="Dependencia"
@@ -1437,6 +1448,9 @@ function ComedoresPageContent() {
                         puedeDetalle ? "cursor-pointer hover:bg-green-50/50" : "cursor-default opacity-90"
                       )}
                     >
+                      <td className="whitespace-nowrap py-3 pr-3 font-semibold tabular-nums text-slate-500">
+                        {r.comedor_id || "—"}
+                      </td>
                       <td className="max-w-[220px] py-3 pr-3 font-bold break-words text-slate-800 sm:max-w-[280px]">
                         {r.nombre}
                       </td>
@@ -1588,6 +1602,12 @@ function ComedoresPageContent() {
                   <div className="min-w-0 space-y-4">
                     <h4 className="text-xl sm:text-2xl font-black text-slate-900 break-words leading-snug">{detail.nombre}</h4>
                     <dl className="space-y-3 text-sm text-slate-800">
+                      <div>
+                        <dt className="font-bold text-slate-600">ID</dt>
+                        <dd className="mt-0.5 font-semibold font-mono tabular-nums text-slate-900">
+                          {idPadronDependencia(detail)}
+                        </dd>
+                      </div>
                       <div>
                         <dt className="font-bold text-slate-600">Dirección</dt>
                         <dd className="mt-0.5 break-words leading-relaxed">{lineaDireccionCompleta(detail)}</dd>
